@@ -12,31 +12,55 @@ Claude Code Actions ライクな動作を目指しています
 
 ## ⚡ クイックスタート
 
-### 1. 設定
-```bash
-# 1. GEMINI_API_KEYをSecretsに設定
-#    Repository Settings → Secrets and Variables → Actions
-#    Name: GEMINI_API_KEY
-#    Value: [Google AI Studioで取得したAPIキー]
+### GitHub Action として使用 (以下ファイル作成）
 
-# 2. ワークフローファイルを確認
-.github/workflows/enhanced-gemini-solver.yml
+```yaml
+# .github/workflows/gemini-solver.yml
+name: Gemini Issue Solver
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
+
+jobs:
+  solve-issue:
+    runs-on: ubuntu-latest
+    # Issueまたはコメントに@geminiが含まれている場合のみ実行
+    if: contains(github.event.issue.body, '@gemini') || contains(github.event.comment.body, '@gemini')
+    
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Solve Issue with Gemini
+        uses: el-el-san/issue-solver@v1
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          safety-mode: 'normal'
+          dry-run: 'false'
+          run-tests: 'true'
+          # 必要に応じて以下のオプションも設定可能:
+          # gemini-model: 'gemini-2.5-pro-preview-06-05'
+          # enable-review: 'false'
+          # run-linter: 'false'
+          # strict-mode: 'false'
+          # target-files: 'src/**/*.{js,ts,py}'
+          # force-implementation: 'false'
 ```
 
-### 2. 初回実行（推奨）
-```bash
-# GitHub ActionsのWorkflowタブで手動実行
-Actions → Enhanced Gemini Issue Solver → Run workflow
+### 必要なシークレット設定
 
-# パラメーター設定:
-Issue Number: [解決したいIssue番号]
-Gemini Model: gemini-2.5-pro-preview-06-05 (デフォルト)
-Safety Mode: safe
-Dry Run: true ✅
-```
+Repository Settings > Secrets and variables > Actions で以下を設定:
 
-### 3. 実際の実行
-初回確認後、`Dry Run: false` で実際のファイル変更を実行
+- `GEMINI_API_KEY`: Google Gemini APIキー ([取得方法](https://ai.google.dev/))
 
 ###  AIモデルの切り替え
 
@@ -99,50 +123,6 @@ GitHub Actionsの「Enhanced Gemini Issue Solver」から：
 
 ハローワールドを .tsファイルで実装してください
 ```
-
-## ⚙️ 設定要件
-
-### 必要なシークレット
-- `GEMINI_API_KEY`: [Google AI Studio](https://makersuite.google.com/app/apikey)で取得
-- `GITHUB_TOKEN`: 自動設定（手動設定不要）
-
-### 必要な権限
-- `contents: write` - ファイルの読み書き
-- `pull-requests: write` - プルリクエストの作成  
-- `issues: write` - Issueへのコメント
-- `actions: write` - GitHub Actionsワークフローファイルの作成
-
-### 🔧 設定オプション
-
-環境変数で動作をカスタマイズ可能：
-
-```bash
-# セキュリティ設定
-DRY_RUN=false                    # ドライランモード
-STRICT_MODE=false               # 厳密モード（エラー時即停止）
-STRICT_VERIFICATION=true        # テスト/リント失敗時の停止
-KEEP_BACKUPS=true              # バックアップファイル保持
-
-# ワークフロー設定  
-ENABLE_REVIEW=false             # 実装前レビューフェーズ
-RUN_TESTS=true                 # 自動テスト実行
-RUN_LINTER=false               # リンター実行
-GENERATE_REPORT=true           # レポートファイル生成
-
-# モード設定
-EXECUTION_MODE=enhanced        # enhanced, legacy, auto
-ENABLE_ENHANCED=true           # Enhanced機能の有効化
-```
-
-## 🔄 ワークフロー処理（7段階プロセス）
-
-1. **🔒 Security Check**: セキュリティ検証とリスク評価
-2. **📊 Analysis**: Issue内容とリポジトリコンテキストを分析
-3. **📝 Planning**: Gemini AIが解決策を生成・検証
-4. **👀 Review** (オプション): 解決策の事前レビュー
-5. **🔧 Implementation**: 安全なファイル変更の実行
-6. **🧪 Verification**: テスト・リント・構文チェック（失敗時は再分析・再実装）
-7. **📋 Reporting**: レポート生成、PR作成、Issueコメント投稿
 
 ## 📁 対応ファイル
 
@@ -266,22 +246,9 @@ Repository Settings > Secrets and variables > Actions で以下を設定:
 3. Issue本文またはコメントに `@gemini` を含めて投稿
 4. 自動的にIssue解決が開始されます
 
-### 2. Git Submodule
 
-```bash
-# issue-solverをサブモジュールとして追加
-git submodule add https://github.com/el-el-san/issue-solver.git .github/gemini-solver
-cd .github/gemini-solver && npm install
 
-# ワークフローをコピー
-cp .github/gemini-solver/.github/workflows/enhanced-gemini-solver.yml .github/workflows/
-```
-
-### 3. GitHub Template
-
-このリポジトリを「Use this template」でテンプレート化
-
-### 4. カスタマイズ例
+### カスタマイズ例
 
 #### プロジェクト固有の設定
 ```yaml
@@ -348,46 +315,6 @@ env:
   1. `TARGET_FILES` で対象ファイルを限定
   2. Issue内容を具体化して変更範囲を絞る
 
-### 🔧 高度なデバッグ方法
-
-#### 詳細ログの有効化
-```bash
-# GitHub Actions詳細ログ
-RUNNER_DEBUG=1
-
-# アプリケーションレベル
-DEBUG=true
-
-# ファイル操作の確認
-ls -la .gemini-backups/    # バックアップファイル確認
-cat issue_*_report.json    # 実行レポート確認
-```
-
-#### ステップ別デバッグ
-```yaml
-# ワークフロー設定でデバッグ有効化
-env:
-  RUNNER_DEBUG: 1
-  GITHUB_ACTIONS_STEP_DEBUG: true
-  ACTIONS_STEP_DEBUG: true
-  ACTIONS_RUNNER_DEBUG: true
-```
-
-#### エラー別対処法
-| エラーメッセージ | 原因 | 解決方法 |
-|---|---|---|
-| `Too many files changed (100+)` | 大量ファイル変更検出 | `TARGET_FILES="src/**"`で対象限定 |
-| `Tests failed repeatedly (3/3)` | テスト失敗リトライ上限 | `STRICT_VERIFICATION=false`で継続 |
-| `Dangerous pattern detected` | セキュリティスキャン検出 | `SAFETY_MODE=fast`で緩和 |
-| `No meaningful files to commit` | レポートファイルのみ生成 | 正常動作（分析のみ完了） |
-| `File already exists` | ファイル上書き保護 | `FORCE_OVERWRITE=true`で許可 |
-
-### リカバリ手順
-
-1. **バックアップからの復元**: 自動生成されたバックアップブランチから復元
-2. **アーティファクト確認**: GitHub Actionsのアーティファクトからエラーレポートをダウンロード
-3. **段階的実行**: `dry_run: true` で事前確認後に実行
-
 ## 📊 パフォーマンス & 制限
 
 ### Enhanced Mode パフォーマンス
@@ -420,8 +347,6 @@ env:
 - **eslint** - MIT License
 - **@eslint/js** - MIT License
 
-各依存関係の詳細なライセンス情報は、`node_modules` 内の各パッケージディレクトリに含まれています。
-
 ---
 
-*Last updated: 2025/6/5 - 品質改善・デバッグ強化・実装詳細化完了*
+*Last updated: 2025/6/7*
