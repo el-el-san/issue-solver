@@ -56915,8 +56915,7 @@ class FileValidator {
     
     // 保護されたパスとファイル
     this.PROTECTED_PATHS = [
-      '.git',
-      '.github',
+      '.git/',
       'node_modules',
       '.env',
       '.env.local',
@@ -56961,7 +56960,7 @@ class FileValidator {
       
       // 保護されたパスへのアクセスを防止
       for (const protectedPath of this.PROTECTED_PATHS) {
-        if (resolved.includes(protectedPath)) {
+        if (normalized.includes(protectedPath) || resolved.includes(protectedPath)) {
           return { valid: false, reason: `Access to protected path: ${protectedPath}` };
         }
       }
