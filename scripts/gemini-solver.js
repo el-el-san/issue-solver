@@ -48,8 +48,10 @@ class GeminiIssueSolver {
     const fileContents = this.fileAnalyzer.readRelevantFiles(relevantFiles);
     
     // エラー情報は新しい取得機能からも取得
+    const extractedErrorInfo = this.fileAnalyzer.extractErrorInfo(analysisText);
     const combinedErrorInfo = [
-      ...this.fileAnalyzer.extractErrorInfo(analysisText),
+      ...extractedErrorInfo.errors,
+      ...extractedErrorInfo.stackTraces,
       ...issueInfo.errorInfo
     ];
     
