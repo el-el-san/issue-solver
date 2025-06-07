@@ -31,9 +31,14 @@ jobs:
           dry-run: 'false'
           run-tests: 'true'
           # 必要に応じて以下のオプションも設定可能:
-          # gemini-model: 'gemini-2.5-pro-preview-06-05'
+          # gemini-model: 'gemini-2.5-pro-preview-06-05'  # 高精度モデルを使用する場合
           # enable-review: 'false'
           # run-linter: 'false'
           # strict-mode: 'false'
           # target-files: 'src/**/*.{js,ts,py}'
           # force-implementation: 'false'
+          
+          # モデル切り替え例:
+          # - デフォルト: gemini-2.5-flash-preview-05-20 (高速処理)
+          # - 高精度が必要な場合: gemini-model: 'gemini-2.5-pro-preview-06-05'
+          # - コメントでの切り替え: @gemini-pro または @gemini-flash を使用

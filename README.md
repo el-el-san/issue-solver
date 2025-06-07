@@ -48,7 +48,7 @@ jobs:
           dry-run: 'false'
           run-tests: 'true'
           # 必要に応じて以下のオプションも設定可能:
-          # gemini-model: 'gemini-2.5-pro-preview-06-05'
+          # gemini-model: 'gemini-2.5-pro-preview-06-05'  # 高精度モデルを使用
           # enable-review: 'false'
           # run-linter: 'false'
           # strict-mode: 'false'
@@ -65,27 +65,34 @@ Repository Settings > Secrets and variables > Actions で以下を設定:
 ###  AIモデルの切り替え
 
 #### デフォルトモデル
-- **gemini-2.5-pro-preview-06-05**: 高精度・高品質な実装（デフォルト）
+- **gemini-2.5-flash-preview-05-20**: 高速処理モデル（デフォルト）
 
 #### モデル切り替え方法
 
 1. **Issue コメントで指定**:
    ```
-   @gemini-flash
+   @gemini-pro
    この問題を解決してください
    ```
    または
    ```
-   @gemini model: flash
+   @gemini model: pro
    この問題を解決してください
    ```
 
 2. **ワークフロー実行時に指定**:
    - Actions → Run workflow → Gemini Model で選択
 
-3. **利用可能なモデル**:
-   - `gemini-2.5-pro-preview-06-05` - 高精度モデル（デフォルト）
-   - `gemini-2.5-flash-preview-05-20` - 高速処理モデル
+3. **環境変数で指定**:
+   ```yaml
+   # .github/workflows/gemini-solver.yml
+   env:
+     GEMINI_MODEL: 'gemini-2.5-pro-preview-06-05'
+   ```
+
+4. **利用可能なモデル**:
+   - `gemini-2.5-flash-preview-05-20` - 高速処理モデル（デフォルト）
+   - `gemini-2.5-pro-preview-06-05` - 高精度モデル
 
 #### モデル切り替えトリガー
 - `@gemini-flash` - Flash モデルを使用
@@ -225,7 +232,7 @@ jobs:
           dry-run: 'false'
           run-tests: 'true'
           # 必要に応じて以下のオプションも設定可能:
-          # gemini-model: 'gemini-2.5-pro-preview-06-05'
+          # gemini-model: 'gemini-2.5-pro-preview-06-05'  # 高精度モデルを使用
           # enable-review: 'false'
           # run-linter: 'false'
           # strict-mode: 'false'
