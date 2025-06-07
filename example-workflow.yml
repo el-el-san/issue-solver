@@ -1,0 +1,38 @@
+# .github/workflows/gemini-solver.yml
+name: Gemini Issue Solver
+on:
+  issues:
+    types: [opened, edited]
+  issue_comment:
+    types: [created]
+
+jobs:
+  solve-issue:
+    runs-on: ubuntu-latest
+    # Issueまたはコメントに@geminiが含まれている場合のみ実行
+    if: contains(github.event.issue.body, '@gemini') || contains(github.event.comment.body, '@gemini')
+    
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Solve Issue with Gemini
+        uses: el-el-san/issue-solver@v1
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          safety-mode: 'normal'
+          dry-run: 'false'
+          run-tests: 'true'
+          # 必要に応じて以下のオプションも設定可能:
+          # gemini-model: 'gemini-2.5-pro-preview-06-05'
+          # enable-review: 'false'
+          # run-linter: 'false'
+          # strict-mode: 'false'
+          # target-files: 'src/**/*.{js,ts,py}'
+          # force-implementation: 'false'

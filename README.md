@@ -222,7 +222,14 @@ on:
 jobs:
   solve-issue:
     runs-on: ubuntu-latest
+    # Issueまたはコメントに@geminiが含まれている場合のみ実行
     if: contains(github.event.issue.body, '@gemini') || contains(github.event.comment.body, '@gemini')
+    
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+    
     steps:
       - uses: actions/checkout@v4
       
@@ -235,7 +242,27 @@ jobs:
           safety-mode: 'normal'
           dry-run: 'false'
           run-tests: 'true'
+          # 必要に応じて以下のオプションも設定可能:
+          # gemini-model: 'gemini-2.5-pro-preview-06-05'
+          # enable-review: 'false'
+          # run-linter: 'false'
+          # strict-mode: 'false'
+          # target-files: 'src/**/*.{js,ts,py}'
+          # force-implementation: 'false'
 ```
+
+#### 必要なシークレット設定
+
+Repository Settings > Secrets and variables > Actions で以下を設定:
+
+- `GEMINI_API_KEY`: Google Gemini APIキー ([取得方法](https://ai.google.dev/))
+
+#### 使用方法
+
+1. 上記のworkflowファイルをリポジトリに追加
+2. Gemini APIキーをシークレットに設定
+3. Issue本文またはコメントに `@gemini` を含めて投稿
+4. 自動的にIssue解決が開始されます
 
 ### 2. Git Submodule
 
