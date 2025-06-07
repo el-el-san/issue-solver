@@ -55,3 +55,6 @@ Thumbs.db
 *.temp
 gemini_*.js
 test_*.js
+
+# Keep dist/ for GitHub Actions
+!dist/
