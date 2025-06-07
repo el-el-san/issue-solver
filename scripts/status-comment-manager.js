@@ -96,7 +96,7 @@ class StatusCommentManager {
 
     switch (status) {
       case 'starting':
-        return `**🤖 Gemini AI 分析開始** ${spinner}
+        return `**Gemini AI 分析開始** ${spinner}
 
 **フェーズ:** ${data.phase || '初期化'}
 **ステータス:** ${data.message || '処理を開始しています...'}
@@ -110,7 +110,7 @@ class StatusCommentManager {
 *最終更新: ${timestamp}*`;
 
       case 'analyzing':
-        return `**🤖 Gemini AI 分析中** ${spinner}
+        return `**Gemini AI 分析中** ${spinner}
 
 **フェーズ:** Issue 分析
 **ステータス:** ${data.message || 'Issue内容とコードベースを分析しています...'}
@@ -124,7 +124,7 @@ class StatusCommentManager {
 *最終更新: ${timestamp}*`;
 
       case 'planning':
-        return `**🤖 Gemini AI 計画中** ${spinner}
+        return `**Gemini AI 計画中** ${spinner}
 
 **フェーズ:** 解決策計画
 **ステータス:** ${data.message || '解決策を計画しています...'}
@@ -138,7 +138,7 @@ class StatusCommentManager {
 *最終更新: ${timestamp}*`;
 
       case 'implementing':
-        return `**🤖 Gemini AI 実装中** ${spinner}
+        return `**Gemini AI 実装中** ${spinner}
 
 **フェーズ:** コード実装
 **ステータス:** ${data.message || '解決策を実装しています...'}
@@ -153,7 +153,7 @@ class StatusCommentManager {
 *最終更新: ${timestamp}*`;
 
       case 'testing':
-        return `**🤖 Gemini AI テスト中** ${spinner}
+        return `**Gemini AI テスト中** ${spinner}
 
 **フェーズ:** テスト実行
 **ステータス:** ${data.message || 'テストを実行しています...'}
@@ -168,7 +168,7 @@ class StatusCommentManager {
 *最終更新: ${timestamp}*`;
 
       case 'retrying':
-        return `**🤖 Gemini AI 再試行中** ${spinner}
+        return `**Gemini AI 再試行中** ${spinner}
 
 **フェーズ:** テスト失敗による再試行
 **ステータス:** ${data.message || 'テスト失敗のため再実装しています...'}
@@ -184,7 +184,7 @@ class StatusCommentManager {
 *最終更新: ${timestamp}*`;
 
       case 'reporting':
-        return `**🤖 Gemini AI レポート生成中** ${spinner}
+        return `**Gemini AI レポート生成中** ${spinner}
 
 **フェーズ:** レポート生成
 **ステータス:** ${data.message || '実装結果のレポートを生成しています...'}
@@ -214,7 +214,7 @@ class StatusCommentManager {
 *最終更新: ${timestamp}*`;
 
       default:
-        return `**🤖 Gemini AI 処理中** ${spinner}
+        return `**Gemini AI 処理中** ${spinner}
 
 **ステータス:** ${data.message || '処理中...'}
 
@@ -227,7 +227,7 @@ class StatusCommentManager {
     const { hasChanges, prUrl, report } = data;
 
     if (hasChanges && prUrl) {
-      return `**🤖 Gemini AI 分析完了**
+      return `**Gemini AI 分析完了**
 
 Issue を分析し、解決策を作成しました！
 
@@ -257,7 +257,7 @@ ${report?.solution?.planning ? report.solution.planning.map((step, i) => `${i+1}
 
 *最終更新: ${timestamp}*`;
     } else {
-      return `**🤖 Gemini AI 分析完了**
+      return `**Gemini AI 分析完了**
 
 Issue を分析しましたが、コードの変更は生成されませんでした。
 
@@ -290,9 +290,9 @@ ${report?.solution?.description || '期待される動作、再現手順、エ�
         issue_number: issueNumber
       });
 
-      // 最新のGeminiコメントを検索 (「🤖 Gemini AI」で始まるコメント)
+      // 最新のGeminiコメントを検索 (「Gemini AI」で始まるコメント)
       const geminiComments = comments.data
-        .filter(comment => comment.body.includes('🤖 Gemini AI'))
+        .filter(comment => comment.body.includes('Gemini AI'))
         .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
 
       if (geminiComments.length > 0) {

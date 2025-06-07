@@ -62,7 +62,7 @@ class ReportGenerator {
   }
 
   generatePRDescription(solution, issueAnalysis) {
-    return '# 🤖 Gemini Issue 解決策\n\n' +
+    return '# Gemini Issue 解決策\n\n' +
       'このPRは Issue #' + process.env.ISSUE_NUMBER + ' に対応します\n\n' +
       '## 📊 Issue サマリー\n' +
       '**タイトル:** ' + issueAnalysis.title + '\n' +

@@ -124,7 +124,7 @@ class ConfigManager {
   selectGeminiModel() {
     // 1. 環境変数から明示的に指定されている場合
     if (process.env.GEMINI_MODEL) {
-      console.log('🤖 環境変数からモデルを使用:', process.env.GEMINI_MODEL);
+      console.log('環境変数からモデルを使用:', process.env.GEMINI_MODEL);
       return process.env.GEMINI_MODEL;
     }
 

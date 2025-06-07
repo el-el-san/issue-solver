@@ -46,7 +46,7 @@ describe('StatusCommentManager', () => {
         owner: 'test-owner',
         repo: 'test-repo',
         issue_number: 123,
-        body: expect.stringContaining('🤖 Gemini AI 分析開始')
+        body: expect.stringContaining('Gemini AI 分析開始')
       });
     });
 
@@ -63,7 +63,7 @@ describe('StatusCommentManager', () => {
         owner: 'test-owner',
         repo: 'test-repo',
         issue_number: 999,
-        body: expect.stringContaining('🤖 Gemini AI 分析開始')
+        body: expect.stringContaining('Gemini AI 分析開始')
       });
     });
 
@@ -90,7 +90,7 @@ describe('StatusCommentManager', () => {
         owner: 'test-owner',
         repo: 'test-repo',
         comment_id: 456,
-        body: expect.stringContaining('🤖 Gemini AI 分析中')
+        body: expect.stringContaining('Gemini AI 分析中')
       });
     });
 
@@ -143,12 +143,12 @@ describe('StatusCommentManager', () => {
           },
           {
             id: 200,
-            body: '🤖 Gemini AI 分析開始',
+            body: 'Gemini AI 分析開始',
             created_at: '2025-01-02T00:00:00Z'
           },
           {
             id: 300,
-            body: '🤖 Gemini AI 分析完了',
+            body: 'Gemini AI 分析完了',
             created_at: '2025-01-03T00:00:00Z'
           }
         ]
@@ -185,31 +185,31 @@ describe('StatusCommentManager', () => {
       const testCases = [
         {
           status: 'starting',
-          expected: '🤖 Gemini AI 分析開始'
+          expected: 'Gemini AI 分析開始'
         },
         {
           status: 'analyzing',
-          expected: '🤖 Gemini AI 分析中'
+          expected: 'Gemini AI 分析中'
         },
         {
           status: 'planning',
-          expected: '🤖 Gemini AI 計画中'
+          expected: 'Gemini AI 計画中'
         },
         {
           status: 'implementing',
-          expected: '🤖 Gemini AI 実装中'
+          expected: 'Gemini AI 実装中'
         },
         {
           status: 'testing',
-          expected: '🤖 Gemini AI テスト中'
+          expected: 'Gemini AI テスト中'
         },
         {
           status: 'retrying',
-          expected: '🤖 Gemini AI 再試行中'
+          expected: 'Gemini AI 再試行中'
         },
         {
           status: 'reporting',
-          expected: '🤖 Gemini AI レポート生成中'
+          expected: 'Gemini AI レポート生成中'
         },
         {
           status: 'error',
@@ -238,7 +238,7 @@ describe('StatusCommentManager', () => {
 
       const comment = statusManager.generateStatusComment('completed', data);
       
-      expect(comment).toContain('🤖 Gemini AI 分析完了');
+      expect(comment).toContain('Gemini AI 分析完了');
       expect(comment).toContain('作成したプルリクエスト');
       expect(comment).toContain(data.prUrl);
       expect(comment).toContain('**信頼度:** high');
@@ -258,7 +258,7 @@ describe('StatusCommentManager', () => {
 
       const comment = statusManager.generateStatusComment('completed', data);
       
-      expect(comment).toContain('🤖 Gemini AI 分析完了');
+      expect(comment).toContain('Gemini AI 分析完了');
       expect(comment).toContain('コードの変更は生成されませんでした');
       expect(comment).not.toContain('プルリクエスト');
     });

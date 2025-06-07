@@ -84,7 +84,7 @@ class GeminiIssueSolver {
   }
 
   async generateSolution() {
-    console.log('🤖 計画フェーズ：Geminiでソリューション生成中...');
+    console.log('計画フェーズ：Geminiでソリューション生成中...');
     console.log('使用モデル:', this.config.geminiModel);
     
     let prompt = this.buildSolutionPrompt(); // letに変更
@@ -242,7 +242,7 @@ DETECTED TECHNOLOGIES: ${this.issueAnalysis.technicalContext.technologies.join('
 `;
     
     if (this.issueAnalysis.hasGeminiTrigger) {
-      prompt += `🎯 IMPORTANT: This issue was triggered by @gemini comment. Focus on the latest request:
+      prompt += `IMPORTANT: This issue was triggered by @gemini comment. Focus on the latest request:
 "${this.issueAnalysis.latestRequest}"
 
 `;

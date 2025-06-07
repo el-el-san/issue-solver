@@ -124,7 +124,7 @@ async function handleSolution(github, context, core) {
 }
 
 function generatePRDescription(report) {
-  return `# 🤖 Gemini Issue 解決策
+  return `# Gemini Issue 解決策
 
 Issue #${report.issueNumber} に対して自動生成されたソリューション
 
@@ -158,7 +158,7 @@ Closes #${report.issueNumber}
 
 // 非推奨: StatusCommentManagerを使用してください
 async function postIssueComment(github, context, report, hasChanges, prUrl = null) {
-  let commentBody = '**🤖 Gemini AI 分析完了**\n\n';
+  let commentBody = '**Gemini AI 分析完了**\n\n';
   
   if (hasChanges && prUrl) {
     commentBody += `Issue を分析し、解決策を作成しました！
