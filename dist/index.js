@@ -55249,17 +55249,24 @@ function socketOnError() {
 /***/ }),
 
 /***/ 5203:
-/***/ ((module) => {
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const { EnhancedIssueFetcher } = __nccwpck_require__(2521);
 
 class ConfigManager {
   constructor() {
     this.geminiApiKey = process.env.GEMINI_API_KEY;
     this.githubToken = process.env.GITHUB_TOKEN;
+    
+    // 基本的なIssue情報（環境変数から - 後でAPI取得データで上書きされる）
     this.issueTitle = process.env.ISSUE_TITLE;
     this.issueBody = process.env.ISSUE_BODY;
     this.issueNumber = process.env.ISSUE_NUMBER;
     this.issueLabels = process.env.ISSUE_LABELS;
     this.commentBody = process.env.COMMENT_BODY;
+    
+    // API取得した完全なIssue情報（初期化後に設定される）
+    this.completeIssueData = null;
     // モデル選択ロジック
     this.geminiModel = this.selectGeminiModel();
     this.forceImplementation = process.env.FORCE_IMPLEMENTATION === 'true';
@@ -55290,6 +55297,77 @@ class ConfigManager {
     console.log('✅ Configuration validated');
     console.log('実行モード:', this.executionMode);
     console.log('使用モデル:', this.geminiModel);
+  }
+
+  /**
+   * GitHub APIからIssueの完全な情報を取得
+   */
+  async loadCompleteIssueData(github, context) {
+    if (!github || !context) {
+      console.log('⚠️ GitHub APIが利用できません。環境変数の情報を使用します。');
+      return;
+    }
+
+    try {
+      console.log('🔍 GitHub APIからIssue情報を完全取得中...');
+      
+      const fetcher = new EnhancedIssueFetcher(github, context);
+      this.completeIssueData = await fetcher.fetchCompleteIssueData(parseInt(this.issueNumber));
+      
+      // 取得したデータで既存のプロパティを更新
+      this.issueTitle = this.completeIssueData.title;
+      this.issueBody = this.completeIssueData.body;
+      this.issueLabels = this.completeIssueData.labels.join(',');
+      
+      // 最新の@geminiコメントがあれば、それを優先
+      if (this.completeIssueData.latestGeminiComment) {
+        this.commentBody = this.completeIssueData.latestGeminiComment.body;
+        console.log(`🎯 最新の@geminiコメントを検出: ${this.completeIssueData.latestGeminiComment.author}`);
+      }
+      
+      // モデル選択を再実行（コメント情報が更新されたため）
+      this.geminiModel = this.selectGeminiModel();
+      
+      console.log('✅ Issue情報の完全取得完了');
+      console.log(`📋 Issue: "${this.issueTitle}"`);
+      console.log(`💬 コメント: ${this.completeIssueData.totalComments}件`);
+      console.log(`🎯 @geminiトリガー: ${this.completeIssueData.geminiTriggerComments.length}件`);
+      
+    } catch (error) {
+      console.error('❌ Issue情報の完全取得に失敗:', error.message);
+      console.log('⚠️ 環境変数の情報を使用して続行します。');
+    }
+  }
+
+  /**
+   * 分析用のIssue情報を取得
+   */
+  getAnalysisIssueInfo() {
+    if (this.completeIssueData) {
+      return {
+        title: this.completeIssueData.title,
+        body: this.completeIssueData.fullContent, // 完全なコンテンツ
+        analysisContext: this.completeIssueData.analysisContext, // AI分析用コンテキスト
+        labels: this.completeIssueData.labels,
+        hasGeminiTrigger: this.completeIssueData.hasGeminiTrigger,
+        latestRequest: this.completeIssueData.analysisContext.primaryRequest,
+        comments: this.completeIssueData.comments,
+        errorInfo: this.completeIssueData.analysisContext.errorInfo,
+        technicalContext: this.completeIssueData.analysisContext.technicalContext
+      };
+    } else {
+      // フォールバック：環境変数の情報
+      return {
+        title: this.issueTitle,
+        body: this.issueBody,
+        labels: this.issueLabels ? this.issueLabels.split(',') : [],
+        hasGeminiTrigger: false,
+        latestRequest: this.commentBody || this.issueBody,
+        comments: [],
+        errorInfo: [],
+        technicalContext: { technologies: [], hasCodeBlocks: false }
+      };
+    }
   }
 
   getTargetFiles() {
@@ -55351,6 +55429,316 @@ module.exports = { ConfigManager };
 
 /***/ }),
 
+/***/ 2521:
+/***/ ((module) => {
+
+/**
+ * Enhanced Issue Information Fetcher
+ * GitHub APIからIssue情報（本文 + 全コメント）を完全に取得
+ */
+
+class EnhancedIssueFetcher {
+  constructor(github, context) {
+    this.github = github;
+    this.context = context;
+  }
+
+  /**
+   * Issue情報とすべてのコメントを取得
+   */
+  async fetchCompleteIssueData(issueNumber) {
+    try {
+      console.log(`🔍 Issue #${issueNumber} の完全な情報を取得中...`);
+
+      // 1. Issue本体の情報を取得
+      const issueResponse = await this.github.rest.issues.get({
+        owner: this.context.repo.owner,
+        repo: this.context.repo.repo,
+        issue_number: issueNumber
+      });
+
+      const issue = issueResponse.data;
+      console.log(`📋 Issue本体を取得: "${issue.title}"`);
+
+      // 2. すべてのコメントを取得（ページネーション対応）
+      const comments = await this.getAllComments(issueNumber);
+      console.log(`💬 コメント ${comments.length}件を取得`);
+
+      // 3. @geminiトリガーコメントを特定
+      const geminiTriggerComments = this.findGeminiTriggerComments(comments);
+      console.log(`🎯 @geminiトリガーコメント ${geminiTriggerComments.length}件を発見`);
+
+      // 4. 最新の@geminiコメントを特定
+      const latestGeminiComment = geminiTriggerComments.length > 0 
+        ? geminiTriggerComments[geminiTriggerComments.length - 1]
+        : null;
+
+      // 5. 完全なIssue情報を構築
+      const completeIssueData = {
+        // 基本情報
+        number: issue.number,
+        title: issue.title,
+        body: issue.body || '',
+        state: issue.state,
+        labels: issue.labels.map(l => l.name),
+        author: issue.user.login,
+        created_at: issue.created_at,
+        updated_at: issue.updated_at,
+
+        // コメント情報
+        comments: comments,
+        totalComments: comments.length,
+        
+        // @gemini関連
+        geminiTriggerComments: geminiTriggerComments,
+        latestGeminiComment: latestGeminiComment,
+        hasGeminiTrigger: geminiTriggerComments.length > 0,
+
+        // 分析用の統合テキスト
+        fullContent: this.buildFullContent(issue, comments, latestGeminiComment),
+        analysisContext: this.buildAnalysisContext(issue, comments, latestGeminiComment)
+      };
+
+      console.log(`✅ Issue情報の取得完了`);
+      console.log(`   - 本文長さ: ${issue.body?.length || 0}文字`);
+      console.log(`   - コメント数: ${comments.length}件`);
+      console.log(`   - @geminiトリガー: ${geminiTriggerComments.length}件`);
+      
+      return completeIssueData;
+
+    } catch (error) {
+      console.error(`❌ Issue情報取得エラー:`, error.message);
+      throw new Error(`Failed to fetch complete issue data: ${error.message}`);
+    }
+  }
+
+  /**
+   * すべてのコメントを取得（ページネーション対応）
+   */
+  async getAllComments(issueNumber) {
+    const allComments = [];
+    let page = 1;
+    const perPage = 100; // GitHub APIの最大値
+
+    while (true) {
+      try {
+        const response = await this.github.rest.issues.listComments({
+          owner: this.context.repo.owner,
+          repo: this.context.repo.repo,
+          issue_number: issueNumber,
+          page: page,
+          per_page: perPage,
+          sort: 'created', // 作成日時順
+          direction: 'asc' // 昇順（古い順）
+        });
+
+        const comments = response.data;
+        console.log(`📄 ページ ${page}: ${comments.length}件のコメントを取得`);
+
+        if (comments.length === 0) {
+          break; // 最後のページに到達
+        }
+
+        allComments.push(...comments);
+        
+        // 次のページがあるかチェック
+        if (comments.length < perPage) {
+          break; // これが最後のページ
+        }
+
+        page++;
+      } catch (error) {
+        console.error(`コメント取得エラー (ページ ${page}):`, error.message);
+        break;
+      }
+    }
+
+    return allComments;
+  }
+
+  /**
+   * @geminiトリガーコメントを検索
+   */
+  findGeminiTriggerComments(comments) {
+    const geminiTriggerPatterns = [
+      /@gemini/i,
+      /@ai/i,
+      /gemini/i,
+      /solve this/i,
+      /fix this/i,
+      /help with this/i
+    ];
+
+    return comments.filter(comment => {
+      const body = comment.body || '';
+      return geminiTriggerPatterns.some(pattern => pattern.test(body));
+    }).map(comment => ({
+      id: comment.id,
+      author: comment.user.login,
+      body: comment.body,
+      created_at: comment.created_at,
+      updated_at: comment.updated_at,
+      html_url: comment.html_url
+    }));
+  }
+
+  /**
+   * 分析用の完全なコンテンツを構築
+   */
+  buildFullContent(issue, comments, latestGeminiComment) {
+    let content = '';
+
+    // Issue本文
+    content += `# Issue: ${issue.title}\n\n`;
+    content += `## Description\n${issue.body || 'No description provided.'}\n\n`;
+
+    // ラベル情報
+    if (issue.labels && issue.labels.length > 0) {
+      content += `## Labels\n${issue.labels.map(l => l.name).join(', ')}\n\n`;
+    }
+
+    // 最新の@geminiコメントを優先表示
+    if (latestGeminiComment) {
+      content += `## Latest @gemini Request (${latestGeminiComment.created_at})\n`;
+      content += `Author: ${latestGeminiComment.author}\n`;
+      content += `${latestGeminiComment.body}\n\n`;
+    }
+
+    // 全コメント履歴（最新10件のみ、長さ制限付き）
+    const recentComments = comments.slice(-10);
+    if (recentComments.length > 0) {
+      content += `## Recent Comments\n`;
+      recentComments.forEach((comment, index) => {
+        const body = comment.body.length > 500 
+          ? comment.body.substring(0, 500) + '...'
+          : comment.body;
+        content += `### Comment ${index + 1} (${comment.user.login})\n${body}\n\n`;
+      });
+    }
+
+    return content;
+  }
+
+  /**
+   * AI分析用のコンテキストを構築
+   */
+  buildAnalysisContext(issue, comments, latestGeminiComment) {
+    return {
+      // 基本情報
+      issueTitle: issue.title,
+      issueBody: issue.body || '',
+      
+      // 最重要：最新の@geminiコメント
+      primaryRequest: latestGeminiComment ? latestGeminiComment.body : issue.body,
+      requestAuthor: latestGeminiComment ? latestGeminiComment.author : issue.user.login,
+      requestDate: latestGeminiComment ? latestGeminiComment.created_at : issue.created_at,
+      
+      // 追加のコンテキスト
+      labels: issue.labels.map(l => l.name),
+      commentCount: comments.length,
+      hasMultipleRequests: comments.filter(c => 
+        c.body && (c.body.includes('@gemini') || c.body.includes('@ai'))
+      ).length > 1,
+      
+      // エラー情報（全コメントから抽出）
+      errorInfo: this.extractErrorsFromAllContent([issue.body, ...comments.map(c => c.body)]),
+      
+      // 議論の流れ
+      conversationFlow: this.summarizeConversationFlow(comments),
+      
+      // 技術的なコンテキスト
+      technicalContext: this.extractTechnicalContext([issue.body, ...comments.map(c => c.body)])
+    };
+  }
+
+  /**
+   * 全コンテンツからエラー情報を抽出
+   */
+  extractErrorsFromAllContent(contents) {
+    const errorPatterns = [
+      /Error: .+/gi,
+      /Exception: .+/gi,
+      /TypeError: .+/gi,
+      /ReferenceError: .+/gi,
+      /SyntaxError: .+/gi,
+      /\w+Error: .+/gi,
+      /Failed to .+/gi,
+      /Cannot .+/gi
+    ];
+
+    const errors = [];
+    contents.forEach(content => {
+      if (!content) return;
+      errorPatterns.forEach(pattern => {
+        const matches = content.match(pattern);
+        if (matches) {
+          errors.push(...matches);
+        }
+      });
+    });
+
+    return [...new Set(errors)]; // 重複除去
+  }
+
+  /**
+   * 会話の流れを要約
+   */
+  summarizeConversationFlow(comments) {
+    if (comments.length === 0) return 'No conversation';
+    
+    const flow = [];
+    comments.forEach((comment, index) => {
+      const isGeminiTrigger = /@gemini|@ai|gemini/i.test(comment.body);
+      flow.push({
+        index: index + 1,
+        author: comment.user.login,
+        isGeminiTrigger,
+        summary: comment.body.substring(0, 100) + (comment.body.length > 100 ? '...' : ''),
+        timestamp: comment.created_at
+      });
+    });
+
+    return flow;
+  }
+
+  /**
+   * 技術的コンテキストを抽出
+   */
+  extractTechnicalContext(contents) {
+    const allText = contents.join(' ').toLowerCase();
+    
+    const technologies = [];
+    const techPatterns = {
+      'JavaScript': /\bjavascript\b|\bjs\b|\.js\b/,
+      'TypeScript': /\btypescript\b|\bts\b|\.ts\b/,
+      'Python': /\bpython\b|\.py\b/,
+      'React': /\breact\b/,
+      'Node.js': /\bnode\.?js\b|\bnpm\b/,
+      'Vue': /\bvue\.?js\b|\bvue\b/,
+      'Angular': /\bangular\b/,
+      'HTML': /\bhtml\b|\.html\b/,
+      'CSS': /\bcss\b|\.css\b/
+    };
+
+    Object.entries(techPatterns).forEach(([tech, pattern]) => {
+      if (pattern.test(allText)) {
+        technologies.push(tech);
+      }
+    });
+
+    return {
+      technologies,
+      hasCodeBlocks: /```/.test(contents.join('')),
+      hasStackTrace: /\s+at\s+/.test(contents.join('')),
+      hasFileReferences: /\.[a-z]{2,4}\b/.test(contents.join(''))
+    };
+  }
+}
+
+module.exports = { EnhancedIssueFetcher };
+
+/***/ }),
+
 /***/ 6707:
 /***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
 
@@ -55381,6 +55769,9 @@ async function enhancedMain(github, context) {
     // 設定を初期化
     config = new ConfigManager();
     await config.validate();
+    
+    // GitHub APIからIssueの完全な情報を取得
+    await config.loadCompleteIssueData(github, context);
     
     // ステータスコメントマネージャーを初期化
     statusManager = new StatusCommentManager(github, context);
@@ -57246,13 +57637,24 @@ class GeminiIssueSolver {
   async analyzeIssue() {
     console.log('🔍 分析フェーズ：Issue分析を開始...');
     
+    // 新しいIssue情報取得機能を使用
+    const issueInfo = this.config.getAnalysisIssueInfo();
+    console.log(`📋 分析対象: ${issueInfo.title}`);
+    console.log(`💬 コメント数: ${issueInfo.comments.length}件`);
+    if (issueInfo.hasGeminiTrigger) {
+      console.log('🎯 @geminiトリガーが検出されました');
+    }
+    
     // ファイル分析
     const repoContext = await this.repositoryAnalyzer.getRepositoryContext();
     
     const targetFiles = this.config.getTargetFiles();
+    
+    // 新しい分析情報を使用してファイル分析を実行
+    const analysisText = issueInfo.latestRequest || issueInfo.body;
     const relevantFiles = targetFiles.length > 0 
       ? targetFiles 
-      : this.fileAnalyzer.findRelevantFiles(this.config.issueTitle, this.config.issueBody, repoContext);
+      : this.fileAnalyzer.findRelevantFiles(issueInfo.title, analysisText, repoContext);
     
     console.log(`📁 関連ファイル: ${relevantFiles.length}件`);
     if (relevantFiles.length > 0) {
@@ -57260,22 +57662,37 @@ class GeminiIssueSolver {
     }
     
     const fileContents = this.fileAnalyzer.readRelevantFiles(relevantFiles);
-    const errorInfo = this.fileAnalyzer.extractErrorInfo(this.config.issueBody);
+    
+    // エラー情報は新しい取得機能からも取得
+    const combinedErrorInfo = [
+      ...this.fileAnalyzer.extractErrorInfo(analysisText),
+      ...issueInfo.errorInfo
+    ];
     
     this.issueAnalysis = {
-      title: this.config.issueTitle,
-      body: this.config.issueBody,
-      labels: this.config.issueLabels ? this.config.issueLabels.split(',') : [],
+      title: issueInfo.title,
+      body: issueInfo.body, // 完全なコンテンツ（Issue本文+コメント）
+      originalBody: this.config.issueBody, // 元のIssue本文
+      labels: issueInfo.labels,
       relevantFiles: relevantFiles,
       fileContents: fileContents,
-      errorInfo: errorInfo,
+      errorInfo: [...new Set(combinedErrorInfo)], // 重複除去
       repositoryContext: repoContext,
-      executionMode: this.config.executionMode
+      executionMode: this.config.executionMode,
+      
+      // 新しい情報
+      hasGeminiTrigger: issueInfo.hasGeminiTrigger,
+      latestRequest: issueInfo.latestRequest,
+      analysisContext: issueInfo.analysisContext,
+      technicalContext: issueInfo.technicalContext,
+      comments: issueInfo.comments,
+      commentsCount: issueInfo.comments.length
     };
     
     console.log('✅ 分析フェーズ完了');
     console.log('発見された関連ファイル:', relevantFiles.length);
-    console.log('検出されたエラーパターン:', errorInfo.length);
+    console.log('検出されたエラーパターン:', this.issueAnalysis.errorInfo.length);
+    console.log('技術スタック:', issueInfo.technicalContext.technologies.join(', ') || 'Auto-detect');
     
     return this.issueAnalysis;
   }
@@ -57423,14 +57840,27 @@ class GeminiIssueSolver {
 
 ISSUE ANALYSIS:
 Title: ${this.issueAnalysis.title}
-Description: ${this.issueAnalysis.body}
+Original Issue Description: ${this.issueAnalysis.originalBody || 'N/A'}
+Full Context (including comments): ${this.issueAnalysis.body}
 Labels: ${this.issueAnalysis.labels.join(', ')}
+
+GEMINI TRIGGER INFORMATION:
+Has @gemini trigger: ${this.issueAnalysis.hasGeminiTrigger ? 'YES' : 'NO'}
+Latest request: ${this.issueAnalysis.latestRequest || 'No specific request'}
+Total comments: ${this.issueAnalysis.commentsCount || 0}
 
 REQUIREMENT TYPE: ${analysisResult.type}
 IMPLEMENTATION REQUIRED: ${analysisResult.needsImplementation ? 'YES' : 'NO'}
-TECHNOLOGY STACK: ${analysisResult.technologies.join(', ') || 'Auto-detect'}
+DETECTED TECHNOLOGIES: ${this.issueAnalysis.technicalContext.technologies.join(', ') || 'Auto-detect'}
 
 `;
+    
+    if (this.issueAnalysis.hasGeminiTrigger) {
+      prompt += `🎯 IMPORTANT: This issue was triggered by @gemini comment. Focus on the latest request:
+"${this.issueAnalysis.latestRequest}"
+
+`;
+    }
     
     if (analysisResult.needsImplementation) {
       prompt += `IMPORTANT: This is a code implementation request. You MUST create actual code files.
@@ -57441,7 +57871,7 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
     }
     
     if (this.issueAnalysis.errorInfo.length > 0) {
-      prompt += `ERROR INFORMATION:\n${this.issueAnalysis.errorInfo.map(e => `- ${e}`).join('\n')}\n\n`;
+      prompt += `ERROR INFORMATION (from issue + comments):\n${this.issueAnalysis.errorInfo.map(e => `- ${e}`).join('\n')}\n\n`;
     }
     
     if (Object.keys(this.issueAnalysis.fileContents).length > 0) {
@@ -57463,17 +57893,24 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
 
   // Issue内容の詳細分析
   analyzeIssueContent() {
-    const text = (this.issueAnalysis.title + ' ' + this.issueAnalysis.body).toLowerCase();
+    // 最新のリクエストを優先して分析
+    const primaryText = this.issueAnalysis.latestRequest || this.issueAnalysis.body;
+    const text = (this.issueAnalysis.title + ' ' + primaryText).toLowerCase();
     const repoContext = this.issueAnalysis.repositoryContext || {};
     
-    // テクノロジー検出
-    const technologies = [];
-    if (text.includes('.ts') || text.includes('typescript')) technologies.push('TypeScript');
-    if (text.includes('.js') || text.includes('javascript')) technologies.push('JavaScript');
-    if (text.includes('.py') || text.includes('python')) technologies.push('Python');
-    if (text.includes('.java')) technologies.push('Java');
-    if (text.includes('react')) technologies.push('React');
-    if (text.includes('node') || text.includes('npm')) technologies.push('Node.js');
+    // 技術コンテキストから検出された技術を使用（より正確）
+    const detectedTechs = this.issueAnalysis.technicalContext?.technologies || [];
+    const technologiesSet = new Set(detectedTechs);
+    
+    // 追加の技術検出（従来の方法も併用）
+    if (text.includes('.ts') || text.includes('typescript')) technologiesSet.add('TypeScript');
+    if (text.includes('.js') || text.includes('javascript')) technologiesSet.add('JavaScript');
+    if (text.includes('.py') || text.includes('python')) technologiesSet.add('Python');
+    if (text.includes('.java')) technologiesSet.add('Java');
+    if (text.includes('react')) technologiesSet.add('React');
+    if (text.includes('node') || text.includes('npm')) technologiesSet.add('Node.js');
+    
+    const technologies = Array.from(technologiesSet);
     
     // 要求タイプの判定
     let type = 'enhancement';
@@ -57755,6 +58192,11 @@ async function main(github = null, context = null) {
     // 設定の初期化
     const config = new ConfigManager();
     await config.validate();
+    
+    // GitHub APIからIssueの完全な情報を取得
+    if (github && context) {
+      await config.loadCompleteIssueData(github, context);
+    }
     
     console.log('Issue #' + config.issueNumber + ':', config.issueTitle);
     console.log('='.repeat(60));

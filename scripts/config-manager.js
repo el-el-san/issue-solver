@@ -1,12 +1,19 @@
+const { EnhancedIssueFetcher } = require('./enhanced-issue-fetcher');
+
 class ConfigManager {
   constructor() {
     this.geminiApiKey = process.env.GEMINI_API_KEY;
     this.githubToken = process.env.GITHUB_TOKEN;
+    
+    // 基本的なIssue情報（環境変数から - 後でAPI取得データで上書きされる）
     this.issueTitle = process.env.ISSUE_TITLE;
     this.issueBody = process.env.ISSUE_BODY;
     this.issueNumber = process.env.ISSUE_NUMBER;
     this.issueLabels = process.env.ISSUE_LABELS;
     this.commentBody = process.env.COMMENT_BODY;
+    
+    // API取得した完全なIssue情報（初期化後に設定される）
+    this.completeIssueData = null;
     // モデル選択ロジック
     this.geminiModel = this.selectGeminiModel();
     this.forceImplementation = process.env.FORCE_IMPLEMENTATION === 'true';
@@ -37,6 +44,77 @@ class ConfigManager {
     console.log('✅ Configuration validated');
     console.log('実行モード:', this.executionMode);
     console.log('使用モデル:', this.geminiModel);
+  }
+
+  /**
+   * GitHub APIからIssueの完全な情報を取得
+   */
+  async loadCompleteIssueData(github, context) {
+    if (!github || !context) {
+      console.log('⚠️ GitHub APIが利用できません。環境変数の情報を使用します。');
+      return;
+    }
+
+    try {
+      console.log('🔍 GitHub APIからIssue情報を完全取得中...');
+      
+      const fetcher = new EnhancedIssueFetcher(github, context);
+      this.completeIssueData = await fetcher.fetchCompleteIssueData(parseInt(this.issueNumber));
+      
+      // 取得したデータで既存のプロパティを更新
+      this.issueTitle = this.completeIssueData.title;
+      this.issueBody = this.completeIssueData.body;
+      this.issueLabels = this.completeIssueData.labels.join(',');
+      
+      // 最新の@geminiコメントがあれば、それを優先
+      if (this.completeIssueData.latestGeminiComment) {
+        this.commentBody = this.completeIssueData.latestGeminiComment.body;
+        console.log(`🎯 最新の@geminiコメントを検出: ${this.completeIssueData.latestGeminiComment.author}`);
+      }
+      
+      // モデル選択を再実行（コメント情報が更新されたため）
+      this.geminiModel = this.selectGeminiModel();
+      
+      console.log('✅ Issue情報の完全取得完了');
+      console.log(`📋 Issue: "${this.issueTitle}"`);
+      console.log(`💬 コメント: ${this.completeIssueData.totalComments}件`);
+      console.log(`🎯 @geminiトリガー: ${this.completeIssueData.geminiTriggerComments.length}件`);
+      
+    } catch (error) {
+      console.error('❌ Issue情報の完全取得に失敗:', error.message);
+      console.log('⚠️ 環境変数の情報を使用して続行します。');
+    }
+  }
+
+  /**
+   * 分析用のIssue情報を取得
+   */
+  getAnalysisIssueInfo() {
+    if (this.completeIssueData) {
+      return {
+        title: this.completeIssueData.title,
+        body: this.completeIssueData.fullContent, // 完全なコンテンツ
+        analysisContext: this.completeIssueData.analysisContext, // AI分析用コンテキスト
+        labels: this.completeIssueData.labels,
+        hasGeminiTrigger: this.completeIssueData.hasGeminiTrigger,
+        latestRequest: this.completeIssueData.analysisContext.primaryRequest,
+        comments: this.completeIssueData.comments,
+        errorInfo: this.completeIssueData.analysisContext.errorInfo,
+        technicalContext: this.completeIssueData.analysisContext.technicalContext
+      };
+    } else {
+      // フォールバック：環境変数の情報
+      return {
+        title: this.issueTitle,
+        body: this.issueBody,
+        labels: this.issueLabels ? this.issueLabels.split(',') : [],
+        hasGeminiTrigger: false,
+        latestRequest: this.commentBody || this.issueBody,
+        comments: [],
+        errorInfo: [],
+        technicalContext: { technologies: [], hasCodeBlocks: false }
+      };
+    }
   }
 
   getTargetFiles() {

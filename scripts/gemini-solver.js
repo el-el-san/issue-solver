@@ -21,13 +21,24 @@ class GeminiIssueSolver {
   async analyzeIssue() {
     console.log('🔍 分析フェーズ：Issue分析を開始...');
     
+    // 新しいIssue情報取得機能を使用
+    const issueInfo = this.config.getAnalysisIssueInfo();
+    console.log(`📋 分析対象: ${issueInfo.title}`);
+    console.log(`💬 コメント数: ${issueInfo.comments.length}件`);
+    if (issueInfo.hasGeminiTrigger) {
+      console.log('🎯 @geminiトリガーが検出されました');
+    }
+    
     // ファイル分析
     const repoContext = await this.repositoryAnalyzer.getRepositoryContext();
     
     const targetFiles = this.config.getTargetFiles();
+    
+    // 新しい分析情報を使用してファイル分析を実行
+    const analysisText = issueInfo.latestRequest || issueInfo.body;
     const relevantFiles = targetFiles.length > 0 
       ? targetFiles 
-      : this.fileAnalyzer.findRelevantFiles(this.config.issueTitle, this.config.issueBody, repoContext);
+      : this.fileAnalyzer.findRelevantFiles(issueInfo.title, analysisText, repoContext);
     
     console.log(`📁 関連ファイル: ${relevantFiles.length}件`);
     if (relevantFiles.length > 0) {
@@ -35,22 +46,37 @@ class GeminiIssueSolver {
     }
     
     const fileContents = this.fileAnalyzer.readRelevantFiles(relevantFiles);
-    const errorInfo = this.fileAnalyzer.extractErrorInfo(this.config.issueBody);
+    
+    // エラー情報は新しい取得機能からも取得
+    const combinedErrorInfo = [
+      ...this.fileAnalyzer.extractErrorInfo(analysisText),
+      ...issueInfo.errorInfo
+    ];
     
     this.issueAnalysis = {
-      title: this.config.issueTitle,
-      body: this.config.issueBody,
-      labels: this.config.issueLabels ? this.config.issueLabels.split(',') : [],
+      title: issueInfo.title,
+      body: issueInfo.body, // 完全なコンテンツ（Issue本文+コメント）
+      originalBody: this.config.issueBody, // 元のIssue本文
+      labels: issueInfo.labels,
       relevantFiles: relevantFiles,
       fileContents: fileContents,
-      errorInfo: errorInfo,
+      errorInfo: [...new Set(combinedErrorInfo)], // 重複除去
       repositoryContext: repoContext,
-      executionMode: this.config.executionMode
+      executionMode: this.config.executionMode,
+      
+      // 新しい情報
+      hasGeminiTrigger: issueInfo.hasGeminiTrigger,
+      latestRequest: issueInfo.latestRequest,
+      analysisContext: issueInfo.analysisContext,
+      technicalContext: issueInfo.technicalContext,
+      comments: issueInfo.comments,
+      commentsCount: issueInfo.comments.length
     };
     
     console.log('✅ 分析フェーズ完了');
     console.log('発見された関連ファイル:', relevantFiles.length);
-    console.log('検出されたエラーパターン:', errorInfo.length);
+    console.log('検出されたエラーパターン:', this.issueAnalysis.errorInfo.length);
+    console.log('技術スタック:', issueInfo.technicalContext.technologies.join(', ') || 'Auto-detect');
     
     return this.issueAnalysis;
   }
@@ -198,14 +224,27 @@ class GeminiIssueSolver {
 
 ISSUE ANALYSIS:
 Title: ${this.issueAnalysis.title}
-Description: ${this.issueAnalysis.body}
+Original Issue Description: ${this.issueAnalysis.originalBody || 'N/A'}
+Full Context (including comments): ${this.issueAnalysis.body}
 Labels: ${this.issueAnalysis.labels.join(', ')}
+
+GEMINI TRIGGER INFORMATION:
+Has @gemini trigger: ${this.issueAnalysis.hasGeminiTrigger ? 'YES' : 'NO'}
+Latest request: ${this.issueAnalysis.latestRequest || 'No specific request'}
+Total comments: ${this.issueAnalysis.commentsCount || 0}
 
 REQUIREMENT TYPE: ${analysisResult.type}
 IMPLEMENTATION REQUIRED: ${analysisResult.needsImplementation ? 'YES' : 'NO'}
-TECHNOLOGY STACK: ${analysisResult.technologies.join(', ') || 'Auto-detect'}
+DETECTED TECHNOLOGIES: ${this.issueAnalysis.technicalContext.technologies.join(', ') || 'Auto-detect'}
 
 `;
+    
+    if (this.issueAnalysis.hasGeminiTrigger) {
+      prompt += `🎯 IMPORTANT: This issue was triggered by @gemini comment. Focus on the latest request:
+"${this.issueAnalysis.latestRequest}"
+
+`;
+    }
     
     if (analysisResult.needsImplementation) {
       prompt += `IMPORTANT: This is a code implementation request. You MUST create actual code files.
@@ -216,7 +255,7 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
     }
     
     if (this.issueAnalysis.errorInfo.length > 0) {
-      prompt += `ERROR INFORMATION:\n${this.issueAnalysis.errorInfo.map(e => `- ${e}`).join('\n')}\n\n`;
+      prompt += `ERROR INFORMATION (from issue + comments):\n${this.issueAnalysis.errorInfo.map(e => `- ${e}`).join('\n')}\n\n`;
     }
     
     if (Object.keys(this.issueAnalysis.fileContents).length > 0) {
@@ -238,17 +277,24 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
 
   // Issue内容の詳細分析
   analyzeIssueContent() {
-    const text = (this.issueAnalysis.title + ' ' + this.issueAnalysis.body).toLowerCase();
+    // 最新のリクエストを優先して分析
+    const primaryText = this.issueAnalysis.latestRequest || this.issueAnalysis.body;
+    const text = (this.issueAnalysis.title + ' ' + primaryText).toLowerCase();
     const repoContext = this.issueAnalysis.repositoryContext || {};
     
-    // テクノロジー検出
-    const technologies = [];
-    if (text.includes('.ts') || text.includes('typescript')) technologies.push('TypeScript');
-    if (text.includes('.js') || text.includes('javascript')) technologies.push('JavaScript');
-    if (text.includes('.py') || text.includes('python')) technologies.push('Python');
-    if (text.includes('.java')) technologies.push('Java');
-    if (text.includes('react')) technologies.push('React');
-    if (text.includes('node') || text.includes('npm')) technologies.push('Node.js');
+    // 技術コンテキストから検出された技術を使用（より正確）
+    const detectedTechs = this.issueAnalysis.technicalContext?.technologies || [];
+    const technologiesSet = new Set(detectedTechs);
+    
+    // 追加の技術検出（従来の方法も併用）
+    if (text.includes('.ts') || text.includes('typescript')) technologiesSet.add('TypeScript');
+    if (text.includes('.js') || text.includes('javascript')) technologiesSet.add('JavaScript');
+    if (text.includes('.py') || text.includes('python')) technologiesSet.add('Python');
+    if (text.includes('.java')) technologiesSet.add('Java');
+    if (text.includes('react')) technologiesSet.add('React');
+    if (text.includes('node') || text.includes('npm')) technologiesSet.add('Node.js');
+    
+    const technologies = Array.from(technologiesSet);
     
     // 要求タイプの判定
     let type = 'enhancement';

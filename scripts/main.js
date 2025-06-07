@@ -14,6 +14,11 @@ async function main(github = null, context = null) {
     const config = new ConfigManager();
     await config.validate();
     
+    // GitHub APIからIssueの完全な情報を取得
+    if (github && context) {
+      await config.loadCompleteIssueData(github, context);
+    }
+    
     console.log('Issue #' + config.issueNumber + ':', config.issueTitle);
     console.log('='.repeat(60));
     
