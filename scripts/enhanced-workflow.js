@@ -203,9 +203,14 @@ class EnhancedWorkflow {
       verificationSteps.push(this.runPythonChecks());
     }
     
-    // 2. テストの実行
+    // 2. テストの実行（プロジェクトが存在する場合のみ）
     if (this.config.runTests) {
-      verificationSteps.push(this.runTests());
+      const hasValidProject = await this.hasNodeProject() || await this.hasPythonProject();
+      if (hasValidProject) {
+        verificationSteps.push(this.runTests());
+      } else {
+        console.log('ℹ️  テストをスキップ（有効なプロジェクト設定ファイルが見つかりません）');
+      }
     }
     
     // 3. リンターの実行
@@ -228,12 +233,37 @@ class EnhancedWorkflow {
   }
 
   /**
+   * Node.jsプロジェクトの存在チェック
+   */
+  async hasNodeProject() {
+    try {
+      await execAsync('test -f package.json');
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
    * JavaScriptファイルの存在チェック
    */
   async hasJavaScriptFiles() {
     try {
       const { stdout } = await execAsync('find . -name "*.js" -o -name "*.jsx" -o -name "*.ts" -o -name "*.tsx" | head -1');
       return stdout.trim().length > 0;
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Pythonプロジェクトの存在チェック
+   */
+  async hasPythonProject() {
+    try {
+      // requirements.txt, setup.py, pyproject.toml のいずれかが存在するかチェック
+      await execAsync('test -f requirements.txt -o -f setup.py -o -f pyproject.toml');
+      return true;
     } catch {
       return false;
     }
@@ -258,9 +288,7 @@ class EnhancedWorkflow {
     console.log('\n🔍 JavaScript構文チェック...');
     
     // package.jsonの存在確認
-    try {
-      await execAsync('test -f package.json');
-      
+    if (await this.hasNodeProject()) {
       // ESLintが利用可能か確認
       try {
         await execAsync('npx eslint --version');
@@ -269,8 +297,8 @@ class EnhancedWorkflow {
       } catch (error) {
         console.warn('⚠️  ESLintチェックをスキップ（ESLintが設定されていません）');
       }
-    } catch {
-      console.log('ℹ️  Node.jsプロジェクトではありません');
+    } else {
+      console.log('ℹ️  Node.jsプロジェクトではありません（package.jsonが見つかりません）');
     }
   }
 
@@ -280,13 +308,17 @@ class EnhancedWorkflow {
   async runPythonChecks() {
     console.log('\n🔍 Python構文チェック...');
     
-    try {
-      // flake8が利用可能か確認
-      await execAsync('flake8 --version');
-      const { stdout, stderr } = await execAsync('flake8 .');
-      console.log('✅ Flake8チェック完了');
-    } catch (error) {
-      console.warn('⚠️  Pythonチェックをスキップ');
+    if (await this.hasPythonProject()) {
+      try {
+        // flake8が利用可能か確認
+        await execAsync('flake8 --version');
+        const { stdout, stderr } = await execAsync('flake8 .');
+        console.log('✅ Flake8チェック完了');
+      } catch (error) {
+        console.warn('⚠️  Flake8チェックをスキップ（Flake8が設定されていません）');
+      }
+    } else {
+      console.log('ℹ️  Pythonプロジェクトではありません（設定ファイルが見つかりません）');
     }
   }
 
@@ -295,6 +327,15 @@ class EnhancedWorkflow {
    */
   async runTests() {
     console.log('\n🧪 テスト実行中...');
+    
+    // プロジェクト設定ファイルの存在確認
+    const hasNode = await this.hasNodeProject();
+    const hasPython = await this.hasPythonProject();
+    
+    if (!hasNode && !hasPython) {
+      console.log('ℹ️  テストをスキップ（package.json、requirements.txt、setup.py、pyproject.tomlが見つかりません）');
+      return { success: true, skipped: true, reason: 'No project configuration files found' };
+    }
     
     let lastError = null;
     
@@ -344,7 +385,19 @@ class EnhancedWorkflow {
   async runLinter() {
     console.log('\n📏 リンター実行中...');
     
-    const lintCommand = process.env.LINT_COMMAND || 'npm run lint';
+    // プロジェクトの種類に応じてリントコマンドを決定
+    let lintCommand = process.env.LINT_COMMAND;
+    
+    if (!lintCommand) {
+      if (await this.hasNodeProject()) {
+        lintCommand = 'npm run lint';
+      } else if (await this.hasPythonProject()) {
+        lintCommand = 'flake8 .';
+      } else {
+        console.log('ℹ️  リンターをスキップ（対応するプロジェクト設定ファイルが見つかりません）');
+        return { success: true, skipped: true, reason: 'No supported project configuration found' };
+      }
+    }
     
     try {
       const { stdout } = await execAsync(lintCommand, {

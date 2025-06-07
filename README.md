@@ -110,6 +110,7 @@ GitHub Actionsの「Enhanced Gemini Issue Solver」から：
 - `contents: write` - ファイルの読み書き
 - `pull-requests: write` - プルリクエストの作成  
 - `issues: write` - Issueへのコメント
+- `actions: write` - GitHub Actionsワークフローファイルの作成
 
 ### 🔧 設定オプション
 
@@ -229,6 +230,7 @@ jobs:
       contents: write
       issues: write
       pull-requests: write
+      actions: write
     
     steps:
       - uses: actions/checkout@v4
