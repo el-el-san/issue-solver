@@ -111,6 +111,11 @@ class FileAnalyzer {
   findErrorRelatedFiles(text, body) {
     const files = [];
     
+    // bodyが存在することを確認
+    if (!body || typeof body !== 'string') {
+      return files;
+    }
+    
     // スタックトレースからファイル名を抽出
     const stackTraceMatches = body.match(/\s+at\s+[^\(]*\(([^:]+):\d+:\d+\)/g);
     if (stackTraceMatches) {
@@ -199,6 +204,9 @@ class FileAnalyzer {
   
   // キーワード抽出
   extractKeywords(text) {
+    if (!text || typeof text !== 'string') {
+      return [];
+    }
     const words = text.match(/\b[a-zA-Z]{3,}\b/g) || [];
     const stopWords = ['the', 'and', 'for', 'are', 'but', 'not', 'you', 'all', 'can', 'her', 'was', 'one', 'our', 'had', 'but', 'で', 'は', 'を', 'に', 'が', 'の', 'と'];
     return [...new Set(words.filter(word => !stopWords.includes(word.toLowerCase())))];
@@ -317,6 +325,15 @@ class FileAnalyzer {
     
     let errors = [];
     let stackTraces = [];
+    
+    // issueBodyが存在することを確認
+    if (!issueBody || typeof issueBody !== 'string') {
+      return {
+        errors: [],
+        stackTraces: [],
+        hasErrorInfo: false
+      };
+    }
     
     // エラーメッセージの抽出
     errorPatterns.forEach(pattern => {

@@ -139,16 +139,19 @@ class EnhancedSolutionHandler {
       .split('\n')
       .filter(line => line.trim())
       .map(line => line.slice(3))
-      .filter(file => 
-        // ソースコードとドキュメントファイル
-        (file.match(/\.(md|txt|py|js|ts|jsx|tsx|html|css|scss|yml|yaml|sh|json)$/) ||
-         file.includes('ISSUE_')) &&
-        // 除外するファイル（package.jsonとpackage-lock.jsonは含める）
-        !file.includes('issue_solution_report.json') &&
-        !file.includes('issue_') &&  // レポートファイル除外
-        !file.match(/error_report_\d+\.json$/) &&
-        !file.match(/error_\d+_\d+\.json$/)
-      );
+      .filter(file => {
+        if (!file || typeof file !== 'string') return false;
+        return (
+          // ソースコードとドキュメントファイル
+          (file.match(/\.(md|txt|py|js|ts|jsx|tsx|html|css|scss|yml|yaml|sh|json)$/) ||
+           file.includes('ISSUE_')) &&
+          // 除外するファイル（package.jsonとpackage-lock.jsonは含める）
+          !file.includes('issue_solution_report.json') &&
+          !file.includes('issue_') &&  // レポートファイル除外
+          !file.match(/error_report_\d+\.json$/) &&
+          !file.match(/error_\d+_\d+\.json$/)
+        );
+      });
   }
 
   /**

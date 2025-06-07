@@ -301,6 +301,9 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
 
   // 機能名の抽出
   extractFeatureName(text) {
+    if (!text || typeof text !== 'string') {
+      return 'feature';
+    }
     // 基本的な機能名を抽出
     const words = text.match(/\b[a-z]+\b/g) || [];
     const candidates = words.filter(w => w.length > 3 && !['test', 'file', 'code', 'impl'].includes(w));
@@ -309,6 +312,9 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
 
   // 複雑度の評価
   assessComplexity(text) {
+    if (!text || typeof text !== 'string') {
+      return 'low';
+    }
     let score = 0;
     if (text.includes('api') || text.includes('database')) score += 2;
     if (text.includes('auth') || text.includes('security')) score += 2;
@@ -318,6 +324,9 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
 
   // 優先度の評価
   assessPriority(text) {
+    if (!text || typeof text !== 'string') {
+      return 'medium';
+    }
     if (text.includes('緊急') || text.includes('urgent') || text.includes('重要')) return 'high';
     if (text.includes('バグ') || text.includes('bug') || text.includes('エラー')) return 'high';
     return 'medium';
@@ -397,14 +406,16 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
     }
     
     // 方法2: JSONブロックの抽出
-    const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || 
-                     responseText.match(/{[\s\S]*}/);
-    
-    if (jsonMatch) {
-      try {
-        return JSON.parse(jsonMatch[1] || jsonMatch[0]);
-      } catch (e2) {
-        console.log('🔄 JSONブロック抽出失敗、文字列クリーニングを試行...');
+    if (responseText && typeof responseText === 'string') {
+      const jsonMatch = responseText.match(/```json\s*([\s\S]*?)\s*```/) || 
+                       responseText.match(/{[\s\S]*}/);
+      
+      if (jsonMatch) {
+        try {
+          return JSON.parse(jsonMatch[1] || jsonMatch[0]);
+        } catch (e2) {
+          console.log('🔄 JSONブロック抽出失敗、文字列クリーニングを試行...');
+        }
       }
     }
     
@@ -422,7 +433,9 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
     
     // ファイル情報の抽出
     const files = [];
-    const codeBlockMatches = responseText.match(/```(?:typescript|javascript|python)?\s*([\s\S]*?)```/g) || [];
+    const codeBlockMatches = (responseText && typeof responseText === 'string') 
+      ? responseText.match(/```(?:typescript|javascript|python)?\s*([\s\S]*?)```/g) || []
+      : [];
     
     if (analysisResult.needsImplementation && codeBlockMatches.length > 0) {
       // 最初のコードブロックを使用
