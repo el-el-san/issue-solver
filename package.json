@@ -33,5 +33,13 @@
   },
   "keywords": ["gemini", "github", "automation", "issue-solver", "ai"],
   "author": "Gemini Issue Solver Team",
-  "license": "MIT"
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/el-el-san/issue-solver.git"
+  },
+  "homepage": "https://github.com/el-el-san/issue-solver",
+  "bugs": {
+    "url": "https://github.com/el-el-san/issue-solver/issues"
+  }
 }

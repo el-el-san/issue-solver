@@ -21,7 +21,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Solve Issue with Gemini
-        uses: el-el-san/issue-solver-dev@v1
+        uses: el-el-san/issue-solver@v1
         with:
           issue-number: ${{ github.event.issue.number }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
@@ -32,7 +32,7 @@ jobs:
 
 ```yaml
 - name: Solve Issue with Gemini (Advanced)
-  uses: el-el-san/issue-solver-dev@v1
+  uses: el-el-san/issue-solver@v1
   with:
     issue-number: ${{ github.event.issue.number }}
     gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
@@ -143,7 +143,7 @@ env:
 
 ```yaml
 - name: Setup for Multi-Language
-  uses: el-el-san/issue-solver-dev@v1
+  uses: el-el-san/issue-solver@v1
   with:
     target-files: 'src/**/*.{js,ts,py}'
     run-tests: 'true'
@@ -169,7 +169,7 @@ env:
 
 ```yaml
 - name: Debug Mode
-  uses: el-el-san/issue-solver-dev@v1
+  uses: el-el-san/issue-solver@v1
   with:
     dry-run: 'true'
     strict-mode: 'false'
@@ -182,8 +182,8 @@ env:
 ### 特定バージョンの使用
 
 ```yaml
-uses: el-el-san/issue-solver-dev@v1.2.3  # 特定バージョン
-uses: el-el-san/issue-solver-dev@main      # 最新版（開発中）
+uses: el-el-san/issue-solver@v1.2.3  # 特定バージョン
+uses: el-el-san/issue-solver@main      # 最新版（開発中）
 ```
 
 ### アップデート確認

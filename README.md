@@ -227,7 +227,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Solve Issue with Gemini
-        uses: el-el-san/issue-solver-dev@v1
+        uses: el-el-san/issue-solver@v1
         with:
           issue-number: ${{ github.event.issue.number }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
