@@ -1,0 +1,72 @@
+name: 'Gemini Issue Solver'
+description: 'AI-powered GitHub issue solver using Google Gemini'
+author: 'Gemini Issue Solver Team'
+branding:
+  icon: 'cpu'
+  color: 'blue'
+
+inputs:
+  issue-number:
+    description: 'GitHub issue number to solve'
+    required: true
+  gemini-api-key:
+    description: 'Google Gemini API key'
+    required: true
+  github-token:
+    description: 'GitHub token for API access'
+    required: false
+    default: ${{ github.token }}
+  safety-mode:
+    description: 'Safety mode for execution (safe, normal, fast)'
+    required: false
+    default: 'normal'
+  dry-run:
+    description: 'Run in dry-run mode without making actual changes'
+    required: false
+    default: 'false'
+  gemini-model:
+    description: 'Gemini model to use'
+    required: false
+    default: 'gemini-2.5-pro-preview-06-05'
+  enable-review:
+    description: 'Enable review phase before implementation'
+    required: false
+    default: 'false'
+  run-tests:
+    description: 'Run tests after implementation'
+    required: false
+    default: 'true'
+  run-linter:
+    description: 'Run linter after implementation'
+    required: false
+    default: 'false'
+  strict-mode:
+    description: 'Enable strict mode (fail on any error)'
+    required: false
+    default: 'false'
+  target-files:
+    description: 'Target file patterns (comma-separated)'
+    required: false
+    default: ''
+  force-implementation:
+    description: 'Force implementation even with low confidence'
+    required: false
+    default: 'false'
+
+outputs:
+  success:
+    description: 'Whether the issue was successfully solved'
+  pr-number:
+    description: 'Pull request number if created'
+  pr-url:
+    description: 'Pull request URL if created'
+  report-path:
+    description: 'Path to the generated report file'
+  files-changed:
+    description: 'Number of files changed'
+  confidence-score:
+    description: 'AI confidence score for the solution'
+
+runs:
+  using: 'node20'
+  main: 'action-main.js'

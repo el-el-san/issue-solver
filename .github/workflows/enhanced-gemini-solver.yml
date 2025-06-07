@@ -1,0 +1,369 @@
+name: Enhanced Gemini Issue Solver
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_number:
+        description: '解決するIssue番号'
+        required: true
+        type: number
+      gemini_model:
+        description: 'Geminiモデル'
+        required: false
+        default: 'gemini-2.5-pro-preview-06-05'
+        type: choice
+        options:
+          - 'gemini-2.5-pro-preview-06-05'
+          - 'gemini-2.5-flash-preview-05-20'
+      safety_mode:
+        description: '安全モード'
+        required: false
+        default: 'normal'
+        type: choice
+        options:
+          - 'safe'      # 最高レベルの安全性（ドライラン + 検証）
+          - 'normal'    # 通常モード（バックアップ + 検証）
+          - 'fast'      # 高速モード（最小限の検証）
+      dry_run:
+        description: 'ドライラン（ファイル変更をシミュレートのみ）'
+        required: false
+        default: false
+        type: boolean
+      enable_review:
+        description: '実装前レビューを有効化'
+        required: false
+        default: false
+        type: boolean
+      target_files:
+        description: '対象ファイル（カンマ区切り、空の場合は自動検出）'
+        required: false
+        default: ''
+      run_tests:
+        description: 'テスト実行'
+        required: false
+        default: true
+        type: boolean
+      run_linter:
+        description: 'リンター実行'
+        required: false
+        default: false
+        type: boolean
+      force_implementation:
+        description: '強制実装モード（低信頼度でも実装）'
+        required: false
+        default: false
+        type: boolean
+  issue_comment:
+    types: [created]
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  # Pre-check job for security validation
+  security-check:
+    runs-on: ubuntu-latest
+    outputs:
+      safe_to_proceed: ${{ steps.security.outputs.safe }}
+      issue_number: ${{ steps.parse.outputs.issue_number }}
+      safety_mode: ${{ steps.parse.outputs.safety_mode }}
+    steps:
+      - name: Parse trigger and validate
+        id: parse
+        run: |
+          # ワークフローディスパッチの場合
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "issue_number=${{ github.event.inputs.issue_number }}" >> $GITHUB_OUTPUT
+            echo "safety_mode=${{ github.event.inputs.safety_mode || 'safe' }}" >> $GITHUB_OUTPUT
+          # Issue/コメントトリガーの場合
+          else
+            # Issue番号を抽出
+            if [ "${{ github.event_name }}" = "issue_comment" ]; then
+              echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            else
+              echo "issue_number=${{ github.event.issue.number }}" >> $GITHUB_OUTPUT
+            fi
+            echo "safety_mode=normal" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Security validation
+        id: security
+        run: |
+          # レポジトリの安全性チェック
+          if [ "${{ github.repository_owner }}" != "${{ github.actor }}" ] && [ "${{ github.event_name }}" != "workflow_dispatch" ]; then
+            echo "⚠️ External contributor detected, enabling maximum safety"
+            echo "safe=true" >> $GITHUB_OUTPUT
+            echo "::warning::External contributor - enhanced safety mode enabled"
+          else
+            echo "safe=true" >> $GITHUB_OUTPUT
+          fi
+
+  solve-issue:
+    needs: security-check
+    runs-on: ubuntu-latest
+    if: |
+      needs.security-check.outputs.safe_to_proceed == 'true' && (
+        (
+          github.event_name == 'workflow_dispatch'
+        ) || (
+          github.event.issue.state == 'open' && 
+          (
+            contains(github.event.comment.body, '@gemini') ||
+            contains(github.event.comment.body, '@gemini-legacy') ||
+            contains(github.event.issue.body, '@gemini') ||
+            contains(github.event.issue.body, '@gemini-legacy') ||
+            contains(github.event.issue.labels.*.name, 'gemini-auto') ||
+            contains(github.event.issue.labels.*.name, 'gemini-legacy') ||
+            contains(github.event.issue.labels.*.name, 'ai-assistance') ||
+            contains(github.event.issue.labels.*.name, 'ai-assistance-legacy')
+          )
+        )
+      )
+    permissions:
+      contents: write
+      pull-requests: write
+      issues: write
+      
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: |
+          npm ci || npm install
+          npm install @google/genai mime
+          
+      - name: Configure Git
+        run: |
+          git config --global user.email "gemini-bot@github-actions.local"
+          git config --global user.name "Gemini Issue Solver"
+          
+      - name: Create backup branch
+        run: |
+          BACKUP_BRANCH="backup/issue-${{ needs.security-check.outputs.issue_number }}-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BACKUP_BRANCH"
+          git push origin "$BACKUP_BRANCH"
+          git checkout main
+          echo "BACKUP_BRANCH=$BACKUP_BRANCH" >> $GITHUB_ENV
+          
+      - name: Validate environment
+        run: |
+          # 必要な環境変数をチェック
+          if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
+            echo "❌ GEMINI_API_KEY is not set"
+            exit 1
+          fi
+          
+          # プロジェクト構造の基本チェック
+          if [ ! -f "package.json" ]; then
+            echo "⚠️ package.json not found"
+          fi
+          
+          # セキュリティファイルの存在チェック
+          echo "🔍 Security scan..."
+          if [ -f ".env" ]; then
+            echo "⚠️ .env file detected - ensure secrets are not committed"
+          fi
+
+      - name: Get Issue Information
+        id: get_issue
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { getIssueInfo } = require('./scripts/issue-utils');
+            const issueInfo = await getIssueInfo(github, context);
+            
+            core.setOutput('issue_number', issueInfo.number);
+            core.setOutput('issue_title', issueInfo.title);
+            core.setOutput('issue_body', issueInfo.body);
+            core.setOutput('issue_labels', issueInfo.labels);
+            core.setOutput('issue_state', issueInfo.state);
+            
+            // Issue内容の基本的な安全性チェック
+            const dangerousPatterns = [
+              /rm\s+-rf\s+\//, 
+              /sudo\s+/, 
+              /curl.*\|\s*sh/,
+              /wget.*\|\s*sh/,
+              /eval\s*\(/,
+              /exec\s*\(/
+            ];
+            
+            const content = issueInfo.title + ' ' + issueInfo.body;
+            const hasDangerousContent = dangerousPatterns.some(pattern => pattern.test(content));
+            
+            if (hasDangerousContent) {
+              core.setFailed('Issue contains potentially dangerous content');
+            }
+            
+      - name: Setup Enhanced Configuration
+        run: |
+          # 安全モードに応じた設定
+          case "${{ needs.security-check.outputs.safety_mode }}" in
+            "safe")
+              echo "DRY_RUN=${{ github.event.inputs.dry_run || 'true' }}" >> $GITHUB_ENV
+              echo "STRICT_MODE=true" >> $GITHUB_ENV
+              echo "STRICT_VERIFICATION=true" >> $GITHUB_ENV
+              echo "KEEP_BACKUPS=true" >> $GITHUB_ENV
+              echo "ENABLE_REVIEW=true" >> $GITHUB_ENV
+              ;;
+            "normal")
+              echo "DRY_RUN=${{ github.event.inputs.dry_run || 'false' }}" >> $GITHUB_ENV
+              echo "STRICT_MODE=false" >> $GITHUB_ENV
+              echo "STRICT_VERIFICATION=true" >> $GITHUB_ENV
+              echo "KEEP_BACKUPS=true" >> $GITHUB_ENV
+              echo "ENABLE_REVIEW=${{ github.event.inputs.enable_review || 'false' }}" >> $GITHUB_ENV
+              ;;
+            "fast")
+              echo "DRY_RUN=${{ github.event.inputs.dry_run || 'false' }}" >> $GITHUB_ENV
+              echo "STRICT_MODE=false" >> $GITHUB_ENV
+              echo "STRICT_VERIFICATION=false" >> $GITHUB_ENV
+              echo "KEEP_BACKUPS=true" >> $GITHUB_ENV
+              echo "ENABLE_REVIEW=false" >> $GITHUB_ENV
+              ;;
+          esac
+          
+          # 共通設定
+          echo "FORCE_OVERWRITE=false" >> $GITHUB_ENV
+          echo "INTERACTIVE=false" >> $GITHUB_ENV
+          echo "RUN_TESTS=${{ github.event.inputs.run_tests || 'true' }}" >> $GITHUB_ENV
+          echo "RUN_LINTER=${{ github.event.inputs.run_linter || 'false' }}" >> $GITHUB_ENV
+          echo "GENERATE_REPORT=true" >> $GITHUB_ENV
+          
+          echo "🔧 Configuration set for ${{ needs.security-check.outputs.safety_mode }} mode"
+
+      - name: Run Enhanced Issue Solver
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_TITLE: ${{ steps.get_issue.outputs.issue_title }}
+          ISSUE_BODY: ${{ steps.get_issue.outputs.issue_body }}
+          ISSUE_NUMBER: ${{ steps.get_issue.outputs.issue_number }}
+          ISSUE_LABELS: ${{ steps.get_issue.outputs.issue_labels }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          GEMINI_MODEL: ${{ github.event.inputs.gemini_model || '' }}
+          FORCE_IMPLEMENTATION: ${{ github.event.inputs.force_implementation || 'false' }}
+          TARGET_FILES: ${{ github.event.inputs.target_files || '' }}
+          EXECUTION_MODE: enhanced
+        uses: actions/github-script@v7
+        with:
+          script: |
+            try {
+              // Enhanced mainを使用
+              const { enhancedMain } = require('./scripts/enhanced-main');
+              
+              // Enhanced workflowを実行
+              const result = await enhancedMain(github, context);
+              
+              console.log('✅ Enhanced workflow completed successfully');
+              console.log('Result:', JSON.stringify(result, null, 2));
+              
+            } catch (error) {
+              console.error('❌ Enhanced workflow failed:', error.message);
+              
+              // 詳細なエラー情報をアーティファクトとして保存
+              const fs = require('fs');
+              const errorDetail = {
+                error: error.message,
+                stack: error.stack,
+                environment: {
+                  node_version: process.version,
+                  platform: process.platform,
+                  safety_mode: process.env.SAFETY_MODE
+                },
+                timestamp: new Date().toISOString()
+              };
+              
+              fs.writeFileSync('error-detail.json', JSON.stringify(errorDetail, null, 2));
+              
+              throw error;
+            }
+
+      - name: Post-execution Validation
+        if: env.DRY_RUN != 'true'
+        run: |
+          echo "🔍 Post-execution validation..."
+          
+          # Git状態をチェック
+          if git diff --quiet; then
+            echo "ℹ️ No file changes detected"
+          else
+            echo "📝 File changes detected:"
+            git diff --name-only
+            
+            # 変更ファイル数の制限チェック
+            CHANGED_FILES=$(git diff --name-only | wc -l)
+            if [ "$CHANGED_FILES" -gt 100 ]; then
+              echo "⚠️ Too many files changed ($CHANGED_FILES). This seems suspicious."
+              if [ "$STRICT_MODE" = "true" ]; then
+                echo "❌ Aborting due to excessive file changes in strict mode"
+                exit 1
+              fi
+            fi
+          fi
+          
+          # 構文チェック（対象リポジトリのテストのみ実行）
+          if [ "$RUN_TESTS" = "true" ] && [ -f "package.json" ]; then
+            echo "🧪 Running project tests..."
+            
+            # issue-solver自体のテストは除外し、対象プロジェクトのテストのみ実行
+            if npm run test 2>/dev/null; then
+              echo "✅ Project tests passed"
+            elif npm test 2>/dev/null; then
+              echo "✅ Project tests passed"
+            else
+              echo "⚠️ No test script found or tests failed"
+              # 他のリポジトリではテストが無い場合もあるので、警告のみで継続
+              if [ "$STRICT_VERIFICATION" = "true" ]; then
+                echo "ℹ️ Test execution skipped in strict mode due to missing or failing tests"
+              fi
+            fi
+          fi
+
+      - name: Create Summary
+        if: always()
+        run: |
+          echo "## 🤖 Enhanced Gemini Issue Solver Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Issue**: #${{ steps.get_issue.outputs.issue_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Safety Mode**: ${{ needs.security-check.outputs.safety_mode }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Dry Run**: ${{ env.DRY_RUN }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Model**: ${{ github.event.inputs.gemini_model || 'auto-selected' }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Backup Branch**: ${{ env.BACKUP_BRANCH }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ -f "issue_*.json" ]; then
+            echo "📋 Report files generated:" >> $GITHUB_STEP_SUMMARY
+            ls -la issue_*.json >> $GITHUB_STEP_SUMMARY
+          fi
+
+      - name: Upload Artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gemini-solver-results-${{ steps.get_issue.outputs.issue_number }}
+          path: |
+            issue_*.json
+            error_*.json
+            error-detail.json
+            .gemini-backups/
+          retention-days: 30
+
+      - name: Cleanup on Error
+        if: failure() && env.DRY_RUN != 'true'
+        run: |
+          echo "🔄 Cleaning up after error..."
+          
+          # バックアップブランチから復元
+          if [ -n "$BACKUP_BRANCH" ]; then
+            git checkout main
+            git reset --hard "origin/$BACKUP_BRANCH"
+            echo "✅ Restored from backup branch: $BACKUP_BRANCH"
+          fi

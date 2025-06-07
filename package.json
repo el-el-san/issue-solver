@@ -1,0 +1,37 @@
+{
+  "name": "gemini-issue-solver",
+  "version": "1.0.0",
+  "description": "Refactored Gemini Issue Solver with improved maintainability",
+  "main": "scripts/main.js",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint scripts/ tests/",
+    "lint:fix": "eslint scripts/ tests/ --fix",
+    "start": "node scripts/main.js"
+  },
+  "dependencies": {
+    "@actions/core": "^1.10.1",
+    "@actions/github": "^6.0.0",
+    "@google/genai": "^1.1.0",
+    "mime": "^4.0.4"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "eslint": "^8.57.0",
+    "@eslint/js": "^9.0.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "collectCoverageFrom": [
+      "scripts/**/*.js",
+      "!scripts/main.js"
+    ],
+    "coverageDirectory": "coverage",
+    "coverageReporters": ["text", "lcov", "html"]
+  },
+  "keywords": ["gemini", "github", "automation", "issue-solver", "ai"],
+  "author": "Gemini Issue Solver Team",
+  "license": "MIT"
+}
