@@ -367,93 +367,94 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
       }, timeout);
       
       try {
-        // Structured Outputsサポートモデル判定
-        const supportsStructuredOutputs = requestConfig.model.includes('codex') || 
-                                         requestConfig.model.includes('o3') ||
-                                         requestConfig.model.startsWith('gpt-4o');
-        
-        if (supportsStructuredOutputs) {
-          // Structured Outputsのスキーマを定義（codex/o3/gpt-4o共通）
-          const jsonSchema = {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              type: {
-                type: "string",
-                enum: ["feature", "bug", "test", "documentation", "enhancement"]
-              },
-              confidence: {
-                type: "string",
-                enum: ["high", "medium", "low"]
-              },
-              analysis: {
-                type: "string",
-                description: "Detailed problem analysis in Japanese"
-              },
-              planning: {
-                type: "array",
-                items: { type: "string" },
-                description: "Step-by-step plan"
-              },
-              description: {
-                type: "string",
-                description: "Clear solution description in Japanese"
-              },
-              files: {
-                type: "array",
-                items: {
-                  type: "object",
-                  additionalProperties: false,
-                  properties: {
-                    path: { type: "string" },
-                    action: { type: "string", enum: ["create", "modify", "delete"] },
-                    changes: { type: "string" },
-                    content: { type: "string" },
-                    modification_type: { type: "string" },
-                    modification_content: { type: "string" },
-                    replace_from: { type: "string" },
-                    replace_to: { type: "string" }
-                  },
-                  required: ["path", "action", "changes", "content", "modification_type", "modification_content", "replace_from", "replace_to"]
-                }
-              },
-              implementation: {
-                type: "string",
-                description: "Complete implementation details or code"
-              },
-              tests: {
-                type: "string",
-                description: "Testing recommendations in Japanese"
-              },
-              report: {
-                type: "string",
-                description: "Implementation report in Japanese"
+        // すべてのOpenAIモデルで/responsesエンドポイントとStructured Outputsを使用
+        const jsonSchema = {
+          type: "object",
+          additionalProperties: false,
+          properties: {
+            type: {
+              type: "string",
+              enum: ["feature", "bug", "test", "documentation", "enhancement"]
+            },
+            confidence: {
+              type: "string",
+              enum: ["high", "medium", "low"]
+            },
+            analysis: {
+              type: "string",
+              description: "Detailed problem analysis in Japanese"
+            },
+            planning: {
+              type: "array",
+              items: { type: "string" },
+              description: "Step-by-step plan"
+            },
+            description: {
+              type: "string",
+              description: "Clear solution description in Japanese"
+            },
+            files: {
+              type: "array",
+              items: {
+                type: "object",
+                additionalProperties: false,
+                properties: {
+                  path: { type: "string" },
+                  action: { type: "string", enum: ["create", "modify", "delete"] },
+                  changes: { type: "string" },
+                  content: { type: "string" },
+                  modification_type: { type: "string" },
+                  modification_content: { type: "string" },
+                  replace_from: { type: "string" },
+                  replace_to: { type: "string" }
+                },
+                required: ["path", "action", "changes", "content", "modification_type", "modification_content", "replace_from", "replace_to"]
               }
             },
-            required: ["type", "confidence", "analysis", "planning", "description", "files", "implementation", "tests", "report"]
-          };
-
-          // Structured Outputsを使用した標準的な/chat/completions（codex/o3/gpt-4o共通処理）
-          const structuredConfig = {
-            ...requestConfig,
-            response_format: {
-              type: "json_schema",
-              json_schema: {
-                name: "issue_solution",
-                strict: true,
-                schema: jsonSchema
-              }
+            implementation: {
+              type: "string",
+              description: "Complete implementation details or code"
+            },
+            tests: {
+              type: "string",
+              description: "Testing recommendations in Japanese"
+            },
+            report: {
+              type: "string",
+              description: "Implementation report in Japanese"
             }
-          };
-          const result = await this.client.chat.completions.create(structuredConfig);
-          clearTimeout(timeoutId);
-          resolve(result);
-        } else {
-          // 従来のモデル（gpt-3.5-turbo, gpt-4等）は基本的な/chat/completionsを使用
-          const result = await this.client.chat.completions.create(requestConfig);
-          clearTimeout(timeoutId);
-          resolve(result);
-        }
+          },
+          required: ["type", "confidence", "analysis", "planning", "description", "files", "implementation", "tests", "report"]
+        };
+
+        // /responsesエンドポイントを使用（すべてのOpenAIモデル共通）
+        const responsesConfig = {
+          model: requestConfig.model,
+          input: requestConfig.messages.map(msg => ({
+            role: msg.role,
+            content: msg.content
+          })),
+          text: {
+            format: {
+              type: "json_schema",
+              strict: true,
+              name: "issue_solution",
+              schema: jsonSchema
+            }
+          }
+        };
+        const result = await this.client.responses.parse(responsesConfig);
+        
+        // /chat/completions形式にレスポンスを変換
+        const convertedResult = {
+          choices: [{
+            message: {
+              content: JSON.stringify(result.output_parsed || result.output_text || result.output || {})
+            }
+          }]
+        };
+        clearTimeout(timeoutId);
+        resolve(convertedResult);
       } catch (error) {
         clearTimeout(timeoutId);
         reject(error);
