@@ -75,7 +75,7 @@ jobs:
       - name: Test Issue Solver with Latest Version
         uses: el-el-san/issue-solver@main  # Latest development version
         with:
-          issue-number: ${{ (github.event_name == 'issue_comment' && github.event.comment.issue.number) || (github.event_name == 'issues' && github.event.issue.number) || '1' }}
+          issue-number: ${{ (github.event_name == 'issue_comment' && github.event.comment.issue.number) || (github.event_name == 'issues' && github.event.issue.number) || github.run_number }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
