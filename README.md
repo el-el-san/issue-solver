@@ -142,7 +142,7 @@ jobs:
             fi
             echo "Using issue number: $ISSUE_NUM"
           else
-            echo "Non-issue event - using test issue number: 1"
+            echo "Non-issue event - using test issue number: ${{ github.run_number }}"
           fi
     
       - name: Checkout repository
@@ -151,7 +151,7 @@ jobs:
       - name: Test Issue Solver with Latest Version
         uses: el-el-san/issue-solver@main  # 最新開発版
         with:
-          issue-number: ${{ (github.event_name == 'issue_comment' && github.event.comment.issue.number) || (github.event_name == 'issues' && github.event.issue.number) || '1' }}
+          issue-number: ${{ (github.event_name == 'issue_comment' && github.event.comment.issue.number) || (github.event_name == 'issues' && github.event.issue.number) || github.run_number }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
