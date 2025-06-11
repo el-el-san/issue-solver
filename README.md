@@ -108,6 +108,14 @@ jobs:
           fi
           echo "Repository: ${{ github.repository }}"
           echo "Actor: ${{ github.actor }}"
+          
+          # Validate issue number is available
+          ISSUE_NUM="${{ github.event_name == 'issue_comment' && github.event.comment.issue.number || github.event.issue.number }}"
+          if [ -z "$ISSUE_NUM" ]; then
+            echo "ERROR: No issue number found for this event"
+            exit 1
+          fi
+          echo "Using issue number: $ISSUE_NUM"
     
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -115,7 +123,7 @@ jobs:
       - name: Test Issue Solver with Latest Version
         uses: el-el-san/issue-solver@main  # 最新開発版
         with:
-          issue-number: ${{ github.event_name == 'issue_comment' && github.event.comment.issue.number || github.event.issue.number || '1' }}
+          issue-number: ${{ github.event_name == 'issue_comment' && github.event.comment.issue.number || github.event.issue.number }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           safety-mode: 'normal'
