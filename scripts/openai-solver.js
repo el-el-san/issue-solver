@@ -372,6 +372,7 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
           // Structured Outputsのスキーマを定義
           const jsonSchema = {
             type: "object",
+            additionalProperties: false,
             properties: {
               type: {
                 type: "string",
@@ -398,6 +399,7 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
                 type: "array",
                 items: {
                   type: "object",
+                  additionalProperties: false,
                   properties: {
                     path: { type: "string" },
                     action: { type: "string", enum: ["create", "modify", "delete"] },
