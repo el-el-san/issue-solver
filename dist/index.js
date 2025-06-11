@@ -57055,6 +57055,7 @@ class ConfigManager {
     if (this.commentBody) {
       // モデル切り替えパターン
       const modelPatterns = [
+        { pattern: /@gpt-o3/i, model: 'o3-2025-04-16' },
         { pattern: /codex-mini-latest/i, model: 'codex-mini-latest' },
         { pattern: /gpt-4o-mini/i, model: 'gpt-4o-mini' },
         { pattern: /gpt-4o/i, model: 'gpt-4o' },
@@ -57076,6 +57077,7 @@ class ConfigManager {
     // 3. Issue ボディから指定を検索
     if (this.issueBody) {
       const modelPatterns = [
+        { pattern: /@gpt-o3/i, model: 'o3-2025-04-16' },
         { pattern: /codex-mini-latest/i, model: 'codex-mini-latest' },
         { pattern: /gpt-4o-mini/i, model: 'gpt-4o-mini' },
         { pattern: /gpt-4o/i, model: 'gpt-4o' },
@@ -59271,7 +59273,7 @@ describe('${title}', () => {
           modifiedContent = currentContent + '\n\n// Gemini generated implementation:\n' + solution.implementation;
         }
       } else {
-        modifiedContent = currentContent + '\n\n// Updated: ' + new Date().toISOString() + '\n' + changes + '\n';
+        modifiedContent = currentContent + '\n\n// Updated: ' + new Date().toISOString() + '\n' + fileAction.changes + '\n';
       }
     }
     

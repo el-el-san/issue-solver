@@ -330,7 +330,7 @@ describe('${title}', () => {
           modifiedContent = currentContent + '\n\n// Gemini generated implementation:\n' + solution.implementation;
         }
       } else {
-        modifiedContent = currentContent + '\n\n// Updated: ' + new Date().toISOString() + '\n' + changes + '\n';
+        modifiedContent = currentContent + '\n\n// Updated: ' + new Date().toISOString() + '\n' + fileAction.changes + '\n';
       }
     }
     
