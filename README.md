@@ -97,15 +97,25 @@ jobs:
       - name: Debug Event Information
         run: |
           echo "Event name: ${{ github.event_name }}"
-          echo "Issue number: ${{ github.event.issue.number }}"
-          echo "Comment body: ${{ github.event.comment.body }}"
+          echo "Event action: ${{ github.event.action }}"
+          if [ "${{ github.event_name }}" = "issue_comment" ]; then
+            echo "Issue number: ${{ github.event.comment.issue.number }}"
+            echo "Comment body: ${{ github.event.comment.body }}"
+            echo "Comment author: ${{ github.event.comment.user.login }}"
+          elif [ "${{ github.event_name }}" = "issues" ]; then
+            echo "Issue number: ${{ github.event.issue.number }}"
+            echo "Issue body: ${{ github.event.issue.body }}"
+          fi
+          echo "Repository: ${{ github.repository }}"
+          echo "Actor: ${{ github.actor }}"
     
       - name: Checkout repository
         uses: actions/checkout@v4
+        
       - name: Test Issue Solver with Latest Version
         uses: el-el-san/issue-solver@main  # 最新開発版
         with:
-          issue-number: ${{ github.event.issue.number || github.event.issue.number || '1' }}
+          issue-number: ${{ github.event_name == 'issue_comment' && github.event.comment.issue.number || github.event.issue.number || '1' }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           safety-mode: 'normal'
