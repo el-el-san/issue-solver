@@ -14,10 +14,15 @@ on:
 jobs:
   test-issue-solver:
     if: |
+      github.event_name == 'push' ||
+      github.event_name == 'pull_request' ||
       (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'test-solve')) ||
-      (github.event_name == 'issue_comment' && (contains(github.event.comment.body, '@gemini') || contains(github.event.comment.body, '@gpt') || contains(github.event.comment.body, '@GPT') || contains(github.event.comment.body, '@GEMINI'))) ||
-      (github.event_name == 'push') ||
-      (github.event_name == 'pull_request')
+      (github.event_name == 'issue_comment' && (
+        contains(github.event.comment.body, '@gemini') ||
+        contains(github.event.comment.body, '@gpt') ||
+        contains(github.event.comment.body, '@GPT') ||
+        contains(github.event.comment.body, '@GEMINI')
+      ))
     runs-on: ubuntu-latest
     
     permissions:
@@ -27,6 +32,14 @@ jobs:
       actions: write
     
     steps:
+      - name: Debug Event Information
+        run: |
+          echo "Event name: ${{ github.event_name }}"
+          echo "Issue number: ${{ github.event.issue.number }}"
+          echo "Comment body: ${{ github.event.comment.body }}"
+    
+      - name: Checkout repository
+        uses: actions/checkout@v4
       - name: Test Issue Solver with Latest Version
         uses: el-el-san/issue-solver@main  # Latest development version
         with:
