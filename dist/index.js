@@ -60762,9 +60762,33 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
       }, timeout);
       
       try {
-        const result = await this.client.chat.completions.create(requestConfig);
-        clearTimeout(timeoutId);
-        resolve(result);
+        // codex-mini-latestモデルは/responsesエンドポイントを使用
+        if (requestConfig.model === 'codex-mini-latest') {
+          // /responsesエンドポイント用にリクエスト形式を変換
+          const responsesConfig = {
+            model: requestConfig.model,
+            input: requestConfig.messages.map(msg => msg.content).join('\n'),
+            temperature: requestConfig.temperature,
+            max_tokens: requestConfig.max_tokens
+          };
+          const result = await this.client.responses.create(responsesConfig);
+          
+          // /chat/completions形式にレスポンスを変換
+          const convertedResult = {
+            choices: [{
+              message: {
+                content: result.output_text || result.output || ''
+              }
+            }]
+          };
+          clearTimeout(timeoutId);
+          resolve(convertedResult);
+        } else {
+          // 他のモデルは従来通り/chat/completionsを使用
+          const result = await this.client.chat.completions.create(requestConfig);
+          clearTimeout(timeoutId);
+          resolve(result);
+        }
       } catch (error) {
         clearTimeout(timeoutId);
         reject(error);
