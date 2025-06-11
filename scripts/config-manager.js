@@ -281,8 +281,8 @@ class ConfigManager {
       }
     }
 
-    // 4. デフォルトモデル (gemini-2.5-flash-preview-05-20)
-    const defaultModel = 'gemini-2.5-flash-preview-05-20';
+    // 4. デフォルトモデル (gemini-2.5-pro-preview-06-05)
+    const defaultModel = 'gemini-2.5-pro-preview-06-05';
     console.log('📌 デフォルトモデルを使用:', defaultModel);
     return defaultModel;
   }

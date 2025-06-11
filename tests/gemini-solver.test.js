@@ -184,7 +184,7 @@ describe('GeminiIssueSolver', () => {
       solver.issueAnalysis.errorInfo = ['Error 1', 'Error 2'];
       const prompt = solver.buildSolutionPrompt();
       
-      expect(prompt).toContain('ERROR INFORMATION:');
+      expect(prompt).toContain('ERROR INFORMATION (from issue + comments):');
       expect(prompt).toContain('Error 1');
       expect(prompt).toContain('Error 2');
     });
