@@ -1,3 +1,6 @@
+#　工事中
+#　一応動きますがなんだか動作が変です。。
+
 # Issue Solver 
 AIを使用してGitHub Issueを自動的に分析・解決する**ワークフローシステム**です。
 Claude Code Actions ライクな動作を目指しています
