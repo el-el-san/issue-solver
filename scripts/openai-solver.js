@@ -399,7 +399,6 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
                 type: "array",
                 items: {
                   type: "object",
-                  additionalProperties: false,
                   properties: {
                     path: { type: "string" },
                     action: { type: "string", enum: ["create", "modify", "delete"] },
