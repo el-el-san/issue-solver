@@ -56880,7 +56880,7 @@ class ConfigManager {
     // OpenAI API retry and timeout configuration
     this.openaiMaxRetries = parseInt(process.env.OPENAI_MAX_RETRIES || '3', 10);
     this.openaiRetryDelay = parseInt(process.env.OPENAI_RETRY_DELAY || '2000', 10); // 2秒
-    this.openaiTimeout = parseInt(process.env.OPENAI_TIMEOUT || '3600000', 10); // 1時間
+    this.openaiTimeout = parseInt(process.env.OPENAI_TIMEOUT || '30000', 10); // 30秒
   }
 
   async validate() {
