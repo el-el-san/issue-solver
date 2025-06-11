@@ -56884,14 +56884,17 @@ class ConfigManager {
   }
 
   async validate() {
-    // AIプロバイダーに応じたAPIキーの検証
+    // 詳細な診断情報を出力
+    this.logDiagnosticInfo();
+    
+    // AIプロバイダーに応じたAPIキーの厳密な検証
     if (this.aiProvider === 'openai') {
       if (!this.openaiApiKey) {
-        throw new Error('OPENAI_API_KEY is required when using OpenAI');
+        this.throwDetailedOpenAIError();
       }
     } else {
       if (!this.geminiApiKey) {
-        throw new Error('GEMINI_API_KEY is required when using Gemini');
+        this.throwDetailedGeminiError();
       }
     }
     
@@ -57128,6 +57131,115 @@ class ConfigManager {
     const defaultModel = 'gemini-2.5-pro-preview-06-05';
     console.log('📌 デフォルトモデルを使用:', defaultModel);
     return defaultModel;
+  }
+
+  /**
+   * 詳細な診断情報をログ出力
+   */
+  logDiagnosticInfo() {
+    console.log('\n🔍 === API KEY診断情報 ===');
+    console.log(`選択されたAIプロバイダー: ${this.aiProvider}`);
+    console.log(`GEMINI_API_KEY存在: ${this.geminiApiKey ? 'はい' : 'いいえ'}`);
+    console.log(`OPENAI_API_KEY存在: ${this.openaiApiKey ? 'はい' : 'いいえ'}`);
+    
+    if (this.geminiApiKey) {
+      console.log(`GEMINI_API_KEY長さ: ${this.geminiApiKey.length}文字`);
+      console.log(`GEMINI_API_KEYプレフィックス: ${this.geminiApiKey.substring(0, 10)}...`);
+    }
+    
+    if (this.openaiApiKey) {
+      console.log(`OPENAI_API_KEY長さ: ${this.openaiApiKey.length}文字`);
+      console.log(`OPENAI_API_KEYプレフィックス: ${this.openaiApiKey.substring(0, 10)}...`);
+    }
+
+    console.log('\n🔍 === トリガー検出情報 ===');
+    console.log(`Issue本文: "${this.issueBody}"`);
+    console.log(`コメント本文: "${this.commentBody || 'なし'}"`);
+    
+    // トリガーパターンの詳細チェック
+    if (this.issueBody) {
+      const gptPatterns = [/@gpt/i, /use.*gpt/i, /openai/i];
+      const geminiPatterns = [/@gemini/i, /use.*gemini/i];
+      
+      console.log('\nGPTトリガーマッチ:');
+      gptPatterns.forEach(pattern => {
+        const match = pattern.test(this.issueBody);
+        console.log(`  ${pattern.source}: ${match ? 'マッチ' : 'なし'}`);
+      });
+      
+      console.log('\nGeminiトリガーマッチ:');
+      geminiPatterns.forEach(pattern => {
+        const match = pattern.test(this.issueBody);
+        console.log(`  ${pattern.source}: ${match ? 'マッチ' : 'なし'}`);
+      });
+    }
+    
+    console.log('\n🔍 === 環境変数情報 ===');
+    console.log(`GITHUB_TOKEN存在: ${process.env.GITHUB_TOKEN ? 'はい' : 'いいえ'}`);
+    console.log(`ISSUE_NUMBER: ${this.issueNumber}`);
+    console.log(`実行モード: ${this.executionMode}`);
+    console.log('=== 診断情報終了 ===\n');
+  }
+
+  /**
+   * OpenAI API キーエラーの詳細情報を出力
+   */
+  throwDetailedOpenAIError() {
+    const errorMessage = [
+      '\n❌ === OpenAI API KEY エラー詳細 ===',
+      '',
+      '🎯 問題: @gpt トリガーが検出されましたが、OPENAI_API_KEY が設定されていません',
+      '',
+      '📋 解決方法:',
+      '1. GitHub リポジトリの Settings → Secrets and variables → Actions に移動',
+      '2. "New repository secret" をクリック',
+      '3. Name: OPENAI_API_KEY',
+      '4. Secret: OpenAI APIキーを貼り付け',
+      '',
+      '🔗 OpenAI APIキー取得方法:',
+      '   https://platform.openai.com/api-keys',
+      '',
+      '⚙️ または、Geminiを使用したい場合:',
+      '   Issue本文を "@gemini" に変更してください',
+      '',
+      `🔍 現在のトリガー検出状況:`,
+      `   Issue本文: "${this.issueBody}"`,
+      `   コメント: "${this.commentBody || 'なし'}"`,
+      '',
+      '=== エラー詳細終了 ==='
+    ].join('\n');
+    
+    console.error(errorMessage);
+    throw new Error('OPENAI_API_KEY is required when using @gpt trigger. Please check the diagnostic information above.');
+  }
+
+  /**
+   * Gemini API キーエラーの詳細情報を出力
+   */
+  throwDetailedGeminiError() {
+    const errorMessage = [
+      '\n❌ === Gemini API KEY エラー詳細 ===',
+      '',
+      '🎯 問題: Gemini AIプロバイダーが選択されましたが、GEMINI_API_KEY が設定されていません',
+      '',
+      '📋 解決方法:',
+      '1. GitHub リポジトリの Settings → Secrets and variables → Actions に移動',
+      '2. "New repository secret" をクリック',
+      '3. Name: GEMINI_API_KEY',
+      '4. Secret: Gemini APIキーを貼り付け',
+      '',
+      '🔗 Gemini APIキー取得方法:',
+      '   https://ai.google.dev/',
+      '',
+      `🔍 現在の検出状況:`,
+      `   AIプロバイダー: ${this.aiProvider}`,
+      `   Issue本文: "${this.issueBody}"`,
+      '',
+      '=== エラー詳細終了 ==='
+    ].join('\n');
+    
+    console.error(errorMessage);
+    throw new Error('GEMINI_API_KEY is required when using Gemini. Please check the diagnostic information above.');
   }
 }
 
@@ -57517,6 +57629,9 @@ async function enhancedMain(github, context) {
     // 設定を初期化
     config = new ConfigManager();
     await config.validate();
+    
+    // フォールバック後のプロバイダーを確認
+    console.log(`📌 最終的なAIプロバイダー: ${config.aiProvider}`);
     
     // GitHub APIからIssueの完全な情報を取得
     await config.loadCompleteIssueData(github, context);

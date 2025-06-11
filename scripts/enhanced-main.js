@@ -27,6 +27,9 @@ async function enhancedMain(github, context) {
     config = new ConfigManager();
     await config.validate();
     
+    // フォールバック後のプロバイダーを確認
+    console.log(`📌 最終的なAIプロバイダー: ${config.aiProvider}`);
+    
     // GitHub APIからIssueの完全な情報を取得
     await config.loadCompleteIssueData(github, context);
     
