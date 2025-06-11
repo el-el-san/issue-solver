@@ -1,3 +1,5 @@
+# 工事中 - openai API 対応と環境切り替え機能追加中
+
 # Gemini Issue Solver 
 Gemini AIを使用してGitHub Issueを自動的に分析・解決する**ワークフローシステム**です。
 Claude Code Actions ライクな動作を目指しています
