@@ -426,20 +426,25 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
           // /responsesエンドポイント用にリクエスト形式を変換（Structured Outputs対応）
           const responsesConfig = {
             model: requestConfig.model,
-            input: requestConfig.messages.map(msg => msg.content).join('\n'),
-            text_format: {
-              type: "json_schema",
-              strict: true,
-              schema: jsonSchema
+            input: requestConfig.messages.map(msg => ({
+              role: msg.role,
+              content: msg.content
+            })),
+            text: {
+              format: {
+                type: "json_schema",
+                strict: true,
+                schema: jsonSchema
+              }
             }
           };
-          const result = await this.client.responses.create(responsesConfig);
+          const result = await this.client.responses.parse(responsesConfig);
           
           // /chat/completions形式にレスポンスを変換
           const convertedResult = {
             choices: [{
               message: {
-                content: result.output_text || result.output || ''
+                content: JSON.stringify(result.output_parsed || result.output_text || result.output || {})
               }
             }]
           };
