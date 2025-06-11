@@ -56925,10 +56925,10 @@ class ConfigManager {
       this.issueBody = this.completeIssueData.body;
       this.issueLabels = this.completeIssueData.labels.join(',');
       
-      // 最新の@geminiコメントがあれば、それを優先
+      // 最新の@gemini/@gptコメントがあれば、それを優先
       if (this.completeIssueData.latestGeminiComment) {
         this.commentBody = this.completeIssueData.latestGeminiComment.body;
-        console.log(`🎯 最新の@geminiコメントを検出: ${this.completeIssueData.latestGeminiComment.author}`);
+        console.log(`🎯 最新のAIトリガーコメントを検出: ${this.completeIssueData.latestGeminiComment.author}`);
       }
       
       // モデル選択を再実行（コメント情報が更新されたため）
@@ -56939,7 +56939,7 @@ class ConfigManager {
       console.log('✅ Issue情報の完全取得完了');
       console.log(`📋 Issue: "${this.issueTitle}"`);
       console.log(`💬 コメント: ${this.completeIssueData.totalComments}件`);
-      console.log(`🎯 @geminiトリガー: ${this.completeIssueData.geminiTriggerComments.length}件`);
+      console.log(`🎯 AIトリガー: ${this.completeIssueData.geminiTriggerComments.length}件`);
       
     } catch (error) {
       console.error('❌ Issue情報の完全取得に失敗:', error.message);
@@ -56989,7 +56989,7 @@ class ConfigManager {
       return process.env.AI_PROVIDER.toLowerCase();
     }
 
-    // 2. コメントボディから@gptパターンを検索
+    // 2. コメントボディから@gptパターンを検索（大文字小文字を区別しない）
     if (this.commentBody) {
       const gptPatterns = [
         /@gpt/i,
@@ -57005,7 +57005,7 @@ class ConfigManager {
       }
     }
 
-    // 3. Issue ボディから@gptパターンを検索
+    // 3. Issue ボディから@gptパターンを検索（大文字小文字を区別しない）
     if (this.issueBody) {
       const gptPatterns = [
         /@gpt/i,
@@ -57124,8 +57124,8 @@ class ConfigManager {
       }
     }
 
-    // 4. デフォルトモデル (gemini-2.5-flash-preview-05-20)
-    const defaultModel = 'gemini-2.5-flash-preview-05-20';
+    // 4. デフォルトモデル (gemini-2.5-pro-preview-06-05)
+    const defaultModel = 'gemini-2.5-pro-preview-06-05';
     console.log('📌 デフォルトモデルを使用:', defaultModel);
     return defaultModel;
   }
@@ -57263,11 +57263,12 @@ class EnhancedIssueFetcher {
   }
 
   /**
-   * @geminiトリガーコメントを検索
+   * @geminiトリガーコメントを検索（@gpt/@GPTトリガーも含む）
    */
   findGeminiTriggerComments(comments) {
     const geminiTriggerPatterns = [
       /@gemini/i,
+      /@gpt/i,  
       /@ai/i,
       /gemini/i,
       /solve this/i,
@@ -57303,9 +57304,9 @@ class EnhancedIssueFetcher {
       content += `## Labels\n${issue.labels.map(l => l.name).join(', ')}\n\n`;
     }
 
-    // 最新の@geminiコメントを優先表示
+    // 最新の@gemini/@gptコメントを優先表示
     if (latestGeminiComment) {
-      content += `## Latest @gemini Request (${latestGeminiComment.created_at})\n`;
+      content += `## Latest AI Request (${latestGeminiComment.created_at})\n`;
       content += `Author: ${latestGeminiComment.author}\n`;
       content += `${latestGeminiComment.body}\n\n`;
     }
@@ -57334,7 +57335,7 @@ class EnhancedIssueFetcher {
       issueTitle: issue.title,
       issueBody: issue.body || '',
       
-      // 最重要：最新の@geminiコメント
+      // 最重要：最新の@gemini/@gptコメント
       primaryRequest: latestGeminiComment ? latestGeminiComment.body : issue.body,
       requestAuthor: latestGeminiComment ? latestGeminiComment.author : issue.user.login,
       requestDate: latestGeminiComment ? latestGeminiComment.created_at : issue.created_at,
@@ -57343,7 +57344,7 @@ class EnhancedIssueFetcher {
       labels: issue.labels.map(l => l.name),
       commentCount: comments.length,
       hasMultipleRequests: comments.filter(c => 
-        c.body && (c.body.includes('@gemini') || c.body.includes('@ai'))
+        c.body && (/@gemini|@gpt|@ai/i.test(c.body))
       ).length > 1,
       
       // エラー情報（全コメントから抽出）
@@ -57394,7 +57395,7 @@ class EnhancedIssueFetcher {
     
     const flow = [];
     comments.forEach((comment, index) => {
-      const isGeminiTrigger = /@gemini|@ai|gemini/i.test(comment.body);
+      const isGeminiTrigger = /@gemini|@gpt|@ai|gemini/i.test(comment.body);
       flow.push({
         index: index + 1,
         author: comment.user.login,
@@ -57625,6 +57626,16 @@ class EnhancedSolutionHandler {
       const existingCommentId = await this.statusManager.findExistingGeminiComment(this.config.issueNumber);
       if (!existingCommentId) {
         await this.statusManager.createInitialComment(this.config.issueNumber);
+      }
+
+      // Gitリポジトリの初期化確認
+      try {
+        execSync('git rev-parse --git-dir', { encoding: 'utf8' });
+      } catch (error) {
+        console.log('📁 Gitリポジトリを初期化中...');
+        execSync('git init', { encoding: 'utf8' });
+        execSync('git config user.email "action@github.com"', { encoding: 'utf8' });
+        execSync('git config user.name "GitHub Action"', { encoding: 'utf8' });
       }
 
       // 変更の確認
@@ -58759,8 +58770,10 @@ class FileManager {
   }
 
   generateTypeScriptContent(issueAnalysis, content) {
+    const moduleType = issueAnalysis.repositoryContext?.packageInfo?.moduleType || 'CommonJS';
+    
     if (this.isHelloWorldRequest(issueAnalysis)) {
-      return `// Hello World implementation in TypeScript
+      let tsContent = `// Hello World implementation in TypeScript
 console.log('Hello, World!');
 
 // Function version
@@ -58790,20 +58803,53 @@ hello.sayHello();
 const customHello = new HelloWorld('こんにちは、世界！');
 customHello.sayHello();
 `;
+      
+      // モジュール型に応じてエクスポート構文を追加
+      if (moduleType === 'ES6') {
+        tsContent += `
+// ES6 module exports
+export { sayHello, HelloWorld };
+export default HelloWorld;
+`;
+      } else {
+        tsContent += `
+// CommonJS module exports (TypeScript will compile to require/module.exports)
+module.exports = { sayHello, HelloWorld };
+module.exports.default = HelloWorld;
+`;
+      }
+      
+      return tsContent;
     } else {
-      return `// TypeScript implementation
+      let tsContent = `// TypeScript implementation
 // Generated by Gemini Issue Solver
 
 ${content}
-
+`;
+      
+      // コンテンツにモジュール構文が含まれていない場合のみ追加
+      if (!content.includes('export ') && !content.includes('module.exports')) {
+        if (moduleType === 'ES6') {
+          tsContent += `
 export {};
 `;
+        } else {
+          tsContent += `
+// CommonJS module exports (if needed)
+// module.exports = {};
+`;
+        }
+      }
+      
+      return tsContent;
     }
   }
 
   generateJavaScriptContent(issueAnalysis, content) {
+    const moduleType = issueAnalysis.repositoryContext?.packageInfo?.moduleType || 'CommonJS';
+    
     if (this.isHelloWorldRequest(issueAnalysis)) {
-      return `// Hello World implementation in JavaScript
+      let helloContent = `// Hello World implementation in JavaScript
 console.log('Hello, World!');
 
 // Function version
@@ -58831,12 +58877,39 @@ hello.sayHello();
 const customHello = new HelloWorld('こんにちは、世界！');
 customHello.sayHello();
 `;
+      
+      // モジュール型に応じてエクスポート構文を追加
+      if (moduleType === 'ES6') {
+        helloContent += `
+// ES6 module exports
+export { sayHello, HelloWorld };
+export default HelloWorld;
+`;
+      } else {
+        helloContent += `
+// CommonJS module exports
+module.exports = { sayHello, HelloWorld };
+module.exports.default = HelloWorld;
+`;
+      }
+      
+      return helloContent;
     } else {
-      return `// JavaScript implementation
+      let jsContent = `// JavaScript implementation
 // Generated by Gemini Issue Solver
 
 ${content}
 `;
+      
+      // コンテンツにモジュール構文が含まれていない場合のみ追加
+      if (!content.includes('export ') && !content.includes('module.exports') && moduleType === 'CommonJS') {
+        jsContent += `
+// CommonJS module exports (if needed)
+// module.exports = {};
+`;
+      }
+      
+      return jsContent;
     }
   }
 
@@ -59357,7 +59430,7 @@ class GeminiIssueSolver {
     console.log(`📋 分析対象: ${issueInfo.title}`);
     console.log(`💬 コメント数: ${issueInfo.comments.length}件`);
     if (issueInfo.hasGeminiTrigger) {
-      console.log('🎯 @geminiトリガーが検出されました');
+      console.log('🎯 AIトリガーが検出されました');
     }
     
     // ファイル分析
@@ -59539,6 +59612,8 @@ class GeminiIssueSolver {
       adjustment = `\n\nIMPORTANT: Previous attempt timed out. Please provide a more concise response with only essential information.\n`;
     } else if (error.message.includes('quota') || error.message.includes('rate')) {
       adjustment = `\n\nIMPORTANT: API rate limit encountered. Simplifying request.\n`;
+    } else if (error.message.includes('文字列contentは許可されません') || error.message.includes('modifyアクション')) {
+      adjustment = `\n\n🚨 CRITICAL FIX REQUIRED: You used STRING content for modify action, which is forbidden!\n\nFOR MODIFY ACTIONS, ALWAYS USE OBJECT FORMAT:\n- Append: {"type": "append", "content": "text to add"}\n- Prepend: {"type": "prepend", "content": "text to add at start"}\n- Replace: {"type": "replace", "from": "text to find", "to": "replacement text"}\n\nString content is ONLY allowed for CREATE actions!\n`;
     }
     
     // 試行回数に応じて簡略化
@@ -59599,7 +59674,8 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
     }
     
     if (this.issueAnalysis.repositoryContext) {
-      prompt += `PROJECT CONTEXT:\n- Framework: ${this.issueAnalysis.repositoryContext.framework || 'Unknown'}\n- Dependencies: ${this.issueAnalysis.repositoryContext.mainDependencies?.slice(0, 5).join(', ') || 'None'}\n\n`;
+      const moduleType = this.issueAnalysis.repositoryContext.packageInfo?.moduleType || 'CommonJS';
+      prompt += `PROJECT CONTEXT:\n- Framework: ${this.issueAnalysis.repositoryContext.framework || 'Unknown'}\n- Module Type: ${moduleType}\n- Dependencies: ${this.issueAnalysis.repositoryContext.mainDependencies?.slice(0, 5).join(', ') || 'None'}\n\n`;
     }
     
     prompt += `RELEVANT FILES: ${this.issueAnalysis.relevantFiles.slice(0, 10).join(', ')}\n\n`;
@@ -59749,10 +59825,12 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
 - Include both unit and integration tests if needed`;
     }
 
-    template += `\n\nCRITICAL FILE MODIFICATION RULES:\n\nFor modify actions, use these content formats:\n1. Append: {"type": "append", "content": "text to add"}\n2. Prepend: {"type": "prepend", "content": "text to add at start"}\n3. Replace: {"type": "replace", "from": "text to find", "to": "replacement text"}\n\nEXAMPLE - Adding timestamp to README.md:\n{\n  "path": "README.md",\n  "action": "modify",\n  "changes": "Add last updated timestamp",\n  "content": {"type": "append", "content": "\\n---\\nLast updated: 2025-05-31 15:30:00"}\n}\n\nWARNING: Using string content in modify action will REPLACE the entire file!\nALWAYS use object format to preserve existing content.\nAll descriptions and reports should be in Japanese.`;
+    template += `\n\n🚨 CRITICAL FILE MODIFICATION RULES 🚨\n\nFOR MODIFY ACTIONS - NEVER USE STRING CONTENT!\nAlways use object format:\n\n1. Append: {"type": "append", "content": "text to add"}\n2. Prepend: {"type": "prepend", "content": "text to add at start"}\n3. Replace: {"type": "replace", "from": "text to find", "to": "replacement text"}\n\nEXAMPLE - Adding timestamp to README.md:\n{\n  "path": "README.md",\n  "action": "modify",\n  "changes": "Add last updated timestamp",\n  "content": {"type": "append", "content": "\\n---\\nLast updated: 2025-05-31 15:30:00"}\n}\n\n⚠️ VALIDATION WILL FAIL IF YOU USE STRING CONTENT FOR MODIFY ACTIONS!\n✅ String content is only allowed for CREATE actions.\n✅ For MODIFY actions, always use object format above.\n\nAll descriptions and reports should be in Japanese.`;
     
     if (analysisResult.needsImplementation) {
-      template += `\n\nIMPLEMENTATION REQUIREMENTS:\n- Create actual ${analysisResult.technologies.join('/')} files\n- Provide complete, working code\n- Include proper imports/dependencies\n- Follow ${this.issueAnalysis.repositoryContext?.framework || 'project'} conventions\n- Ensure files are in correct directories`;
+      const moduleType = this.issueAnalysis.repositoryContext?.packageInfo?.moduleType || 'CommonJS';
+      const syntaxExample = moduleType === 'ES6' ? 'import/export' : 'require/module.exports';
+      template += `\n\nIMPLEMENTATION REQUIREMENTS:\n- Create actual ${analysisResult.technologies.join('/')} files\n- Provide complete, working code\n- Use ${moduleType} syntax (${syntaxExample})\n- Include proper imports/dependencies\n- Follow ${this.issueAnalysis.repositoryContext?.framework || 'project'} conventions\n- Ensure files are in correct directories`;
     }
     
     return template;
@@ -60722,7 +60800,10 @@ class RepositoryAnalyzer {
   getPackageInfo() {
     try {
       if (fs.existsSync('package.json')) {
-        return JSON.parse(fs.readFileSync('package.json', 'utf8'));
+        const packageData = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+        // モジュールタイプを検出して追加
+        packageData.moduleType = packageData.type === 'module' ? 'ES6' : 'CommonJS';
+        return packageData;
       }
     } catch (error) {
       console.log('package.jsonの読み取りに失敗');
