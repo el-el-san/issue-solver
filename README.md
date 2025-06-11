@@ -43,7 +43,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Solve Issue with Gemini
-        uses: el-el-san/issue-solver@v1.0.8.0.8  # 安定版
+        uses: el-el-san/issue-solver@v1.0.8  # 安定版
         with:
           issue-number: ${{ github.event.issue.number }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
