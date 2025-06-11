@@ -358,6 +358,30 @@ class ConfigManager {
     console.log(`GITHUB_ACTOR: ${process.env.GITHUB_ACTOR || '未設定'}`);
     console.log(`GITHUB_EVENT_NAME: ${process.env.GITHUB_EVENT_NAME || '未設定'}`);
     console.log(`GITHUB_REF: ${process.env.GITHUB_REF || '未設定'}`);
+    
+    // 追加の環境変数チェック（よくある名前のバリエーション）
+    console.log('\n🔍 === API KEY環境変数パターンチェック ===');
+    const openaiVariants = [
+      'OPENAI_API_KEY',
+      'OPENAI_KEY', 
+      'OPENAI-API-KEY',
+      'OPENAI_API_KEYS',
+      'OPEN_AI_API_KEY',
+      'OPENAIKEY'
+    ];
+    
+    openaiVariants.forEach(variant => {
+      const value = process.env[variant];
+      console.log(`${variant}: ${value ? '設定済み' : '未設定'}`);
+    });
+    
+    // action.ymlから来る可能性のある入力パラメータもチェック
+    console.log('\n🔍 === INPUT環境変数チェック ===');
+    console.log(`INPUT_OPENAI-API-KEY: ${process.env['INPUT_OPENAI-API-KEY'] ? '設定済み' : '未設定'}`);
+    console.log(`INPUT_OPENAI_API_KEY: ${process.env['INPUT_OPENAI_API_KEY'] ? '設定済み' : '未設定'}`);
+    console.log(`INPUT_GEMINI-API-KEY: ${process.env['INPUT_GEMINI-API-KEY'] ? '設定済み' : '未設定'}`);
+    console.log(`INPUT_GEMINI_API_KEY: ${process.env['INPUT_GEMINI_API_KEY'] ? '設定済み' : '未設定'}`);
+    
     console.log('=== 環境変数デバッグ終了 ===');
     
     console.log('=== 診断情報終了 ===\n');
