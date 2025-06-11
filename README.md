@@ -70,11 +70,19 @@ on:
     branches: [ main ]
   issues:
     types: [opened, labeled]
+  issue_comment:
+    types: [created]
 
 jobs:
   test-issue-solver:
-    if: contains(github.event.issue.labels.*.name, 'test-solve') || github.event_name != 'issues'
+    if: contains(github.event.issue.labels.*.name, 'test-solve') || github.event_name != 'issues' || contains(github.event.comment.body, '@gemini')
     runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      actions: write
     
     steps:
       - name: Test Issue Solver with Latest Version
