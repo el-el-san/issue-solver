@@ -60829,6 +60829,7 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
               format: {
                 type: "json_schema",
                 strict: true,
+                name: "issue_solution",
                 schema: jsonSchema
               }
             }
