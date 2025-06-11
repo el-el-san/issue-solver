@@ -57,8 +57,8 @@ class GeminiIssueSolver {
     
     this.issueAnalysis = {
       title: issueInfo.title,
-      body: issueInfo.body, // 完全なコンテンツ（Issue本文+コメント）
-      originalBody: this.config.issueBody, // 元のIssue本文
+      body: issueInfo.fullContent || issueInfo.body, // 完全なコンテンツ（Issue本文+コメント）
+      originalBody: issueInfo.body, // 元のIssue本文のみ
       labels: issueInfo.labels,
       relevantFiles: relevantFiles,
       fileContents: fileContents,
@@ -79,6 +79,8 @@ class GeminiIssueSolver {
     console.log('発見された関連ファイル:', relevantFiles.length);
     console.log('検出されたエラーパターン:', this.issueAnalysis.errorInfo.length);
     console.log('技術スタック:', issueInfo.technicalContext.technologies.join(', ') || 'Auto-detect');
+    console.log('📄 Issue本文:', this.issueAnalysis.originalBody?.substring(0, 100) + '...');
+    console.log('📋 完全なコンテンツ:', this.issueAnalysis.body?.substring(0, 200) + '...');
     
     return this.issueAnalysis;
   }

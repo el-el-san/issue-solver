@@ -112,14 +112,16 @@ class EnhancedSolutionHandler {
    * ブランチ作成とコミット
    */
   async createBranchAndCommit(report, meaningfulFiles) {
-    // Git設定確認
+    // Git設定確認・設定
     try {
-      execSync('git config user.name', { encoding: 'utf8' });
-      execSync('git config user.email', { encoding: 'utf8' });
+      const userName = execSync('git config user.name', { encoding: 'utf8' }).trim();
+      const userEmail = execSync('git config user.email', { encoding: 'utf8' }).trim();
+      console.log(`✅ Git設定確認済み: ${userName} <${userEmail}>`);
     } catch (configError) {
-      console.log('Git設定が見つからないため、デフォルト設定を適用');
+      console.log('⚙️  GitHub Actions環境のため、Git設定を自動適用中...');
       execSync('git config user.email "gemini-bot@github-actions.local"');
       execSync('git config user.name "Gemini Issue Solver"');
+      console.log('✅ Git設定完了: Gemini Issue Solver <gemini-bot@github-actions.local>');
     }
 
     // ブランチ作成

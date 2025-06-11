@@ -300,6 +300,46 @@ class EnhancedIssueFetcher {
       hasFileReferences: /\.[a-z]{2,4}\b/.test(contents.join(''))
     };
   }
+
+  /**
+   * 完全なコンテンツを構築（Issue本文 + 全コメント）
+   */
+  buildFullContent(issue, comments, latestGeminiComment) {
+    let content = '';
+    
+    // Issue本文を追加
+    if (issue.body) {
+      content += `=== Issue本文 ===\n${issue.body}\n\n`;
+    }
+    
+    // 全コメントを追加
+    if (comments && comments.length > 0) {
+      content += `=== コメント ===\n`;
+      comments.forEach((comment, index) => {
+        content += `--- コメント ${index + 1} (${comment.user.login}) ---\n`;
+        content += `${comment.body}\n\n`;
+      });
+    }
+    
+    return content;
+  }
+
+  /**
+   * 分析用コンテキストを構築
+   */
+  buildAnalysisContext(issue, comments, latestGeminiComment) {
+    return {
+      issueTitle: issue.title,
+      issueBody: issue.body || '',
+      totalComments: comments.length,
+      latestRequest: latestGeminiComment ? latestGeminiComment.body : issue.body,
+      conversationFlow: this.summarizeConversationFlow(comments),
+      technicalContext: this.extractTechnicalContext([
+        issue.body || '',
+        ...comments.map(c => c.body)
+      ])
+    };
+  }
 }
 
 module.exports = { EnhancedIssueFetcher };

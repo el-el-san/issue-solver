@@ -57440,6 +57440,46 @@ class EnhancedIssueFetcher {
       hasFileReferences: /\.[a-z]{2,4}\b/.test(contents.join(''))
     };
   }
+
+  /**
+   * 完全なコンテンツを構築（Issue本文 + 全コメント）
+   */
+  buildFullContent(issue, comments, latestGeminiComment) {
+    let content = '';
+    
+    // Issue本文を追加
+    if (issue.body) {
+      content += `=== Issue本文 ===\n${issue.body}\n\n`;
+    }
+    
+    // 全コメントを追加
+    if (comments && comments.length > 0) {
+      content += `=== コメント ===\n`;
+      comments.forEach((comment, index) => {
+        content += `--- コメント ${index + 1} (${comment.user.login}) ---\n`;
+        content += `${comment.body}\n\n`;
+      });
+    }
+    
+    return content;
+  }
+
+  /**
+   * 分析用コンテキストを構築
+   */
+  buildAnalysisContext(issue, comments, latestGeminiComment) {
+    return {
+      issueTitle: issue.title,
+      issueBody: issue.body || '',
+      totalComments: comments.length,
+      latestRequest: latestGeminiComment ? latestGeminiComment.body : issue.body,
+      conversationFlow: this.summarizeConversationFlow(comments),
+      technicalContext: this.extractTechnicalContext([
+        issue.body || '',
+        ...comments.map(c => c.body)
+      ])
+    };
+  }
 }
 
 module.exports = { EnhancedIssueFetcher };
@@ -57716,14 +57756,16 @@ class EnhancedSolutionHandler {
    * ブランチ作成とコミット
    */
   async createBranchAndCommit(report, meaningfulFiles) {
-    // Git設定確認
+    // Git設定確認・設定
     try {
-      execSync('git config user.name', { encoding: 'utf8' });
-      execSync('git config user.email', { encoding: 'utf8' });
+      const userName = execSync('git config user.name', { encoding: 'utf8' }).trim();
+      const userEmail = execSync('git config user.email', { encoding: 'utf8' }).trim();
+      console.log(`✅ Git設定確認済み: ${userName} <${userEmail}>`);
     } catch (configError) {
-      console.log('Git設定が見つからないため、デフォルト設定を適用');
+      console.log('⚙️  GitHub Actions環境のため、Git設定を自動適用中...');
       execSync('git config user.email "gemini-bot@github-actions.local"');
       execSync('git config user.name "Gemini Issue Solver"');
+      console.log('✅ Git設定完了: Gemini Issue Solver <gemini-bot@github-actions.local>');
     }
 
     // ブランチ作成
@@ -59461,8 +59503,8 @@ class GeminiIssueSolver {
     
     this.issueAnalysis = {
       title: issueInfo.title,
-      body: issueInfo.body, // 完全なコンテンツ（Issue本文+コメント）
-      originalBody: this.config.issueBody, // 元のIssue本文
+      body: issueInfo.fullContent || issueInfo.body, // 完全なコンテンツ（Issue本文+コメント）
+      originalBody: issueInfo.body, // 元のIssue本文のみ
       labels: issueInfo.labels,
       relevantFiles: relevantFiles,
       fileContents: fileContents,
@@ -59483,6 +59525,8 @@ class GeminiIssueSolver {
     console.log('発見された関連ファイル:', relevantFiles.length);
     console.log('検出されたエラーパターン:', this.issueAnalysis.errorInfo.length);
     console.log('技術スタック:', issueInfo.technicalContext.technologies.join(', ') || 'Auto-detect');
+    console.log('📄 Issue本文:', this.issueAnalysis.originalBody?.substring(0, 100) + '...');
+    console.log('📋 完全なコンテンツ:', this.issueAnalysis.body?.substring(0, 200) + '...');
     
     return this.issueAnalysis;
   }
