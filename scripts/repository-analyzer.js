@@ -51,7 +51,10 @@ class RepositoryAnalyzer {
   getPackageInfo() {
     try {
       if (fs.existsSync('package.json')) {
-        return JSON.parse(fs.readFileSync('package.json', 'utf8'));
+        const packageData = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+        // モジュールタイプを検出して追加
+        packageData.moduleType = packageData.type === 'module' ? 'ES6' : 'CommonJS';
+        return packageData;
       }
     } catch (error) {
       console.log('package.jsonの読み取りに失敗');

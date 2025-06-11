@@ -268,7 +268,8 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
     }
     
     if (this.issueAnalysis.repositoryContext) {
-      prompt += `PROJECT CONTEXT:\n- Framework: ${this.issueAnalysis.repositoryContext.framework || 'Unknown'}\n- Dependencies: ${this.issueAnalysis.repositoryContext.mainDependencies?.slice(0, 5).join(', ') || 'None'}\n\n`;
+      const moduleType = this.issueAnalysis.repositoryContext.packageInfo?.moduleType || 'CommonJS';
+      prompt += `PROJECT CONTEXT:\n- Framework: ${this.issueAnalysis.repositoryContext.framework || 'Unknown'}\n- Module Type: ${moduleType}\n- Dependencies: ${this.issueAnalysis.repositoryContext.mainDependencies?.slice(0, 5).join(', ') || 'None'}\n\n`;
     }
     
     prompt += `RELEVANT FILES: ${this.issueAnalysis.relevantFiles.slice(0, 10).join(', ')}\n\n`;
@@ -421,7 +422,9 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
     template += `\n\nCRITICAL FILE MODIFICATION RULES:\n\nFor modify actions, use these content formats:\n1. Append: {"type": "append", "content": "text to add"}\n2. Prepend: {"type": "prepend", "content": "text to add at start"}\n3. Replace: {"type": "replace", "from": "text to find", "to": "replacement text"}\n\nEXAMPLE - Adding timestamp to README.md:\n{\n  "path": "README.md",\n  "action": "modify",\n  "changes": "Add last updated timestamp",\n  "content": {"type": "append", "content": "\\n---\\nLast updated: 2025-05-31 15:30:00"}\n}\n\nWARNING: Using string content in modify action will REPLACE the entire file!\nALWAYS use object format to preserve existing content.\nAll descriptions and reports should be in Japanese.`;
     
     if (analysisResult.needsImplementation) {
-      template += `\n\nIMPLEMENTATION REQUIREMENTS:\n- Create actual ${analysisResult.technologies.join('/')} files\n- Provide complete, working code\n- Include proper imports/dependencies\n- Follow ${this.issueAnalysis.repositoryContext?.framework || 'project'} conventions\n- Ensure files are in correct directories`;
+      const moduleType = this.issueAnalysis.repositoryContext?.packageInfo?.moduleType || 'CommonJS';
+      const syntaxExample = moduleType === 'ES6' ? 'import/export' : 'require/module.exports';
+      template += `\n\nIMPLEMENTATION REQUIREMENTS:\n- Create actual ${analysisResult.technologies.join('/')} files\n- Provide complete, working code\n- Use ${moduleType} syntax (${syntaxExample})\n- Include proper imports/dependencies\n- Follow ${this.issueAnalysis.repositoryContext?.framework || 'project'} conventions\n- Ensure files are in correct directories`;
     }
     
     return template;
