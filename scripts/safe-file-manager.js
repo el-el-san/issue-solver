@@ -55,6 +55,12 @@ class SafeFileManager {
     const errors = [];
     
     for (const operation of operations) {
+      // GitHub Actionsワークフローファイルのチェック
+      if (this.isWorkflowFile(operation.path)) {
+        errors.push(`${operation.path}: GitHub App workflow files require 'workflows' permission`);
+        continue;
+      }
+      
       const validation = this.validator.validateFileOperation(operation);
       if (!validation.valid) {
         errors.push(`${operation.path}: ${validation.reason}`);
@@ -65,6 +71,14 @@ class SafeFileManager {
       valid: errors.length === 0,
       errors
     };
+  }
+
+  /**
+   * GitHub Actionsワークフローファイルかどうかを判定
+   */
+  isWorkflowFile(filePath) {
+    return filePath.includes('.github/workflows/') && 
+           (filePath.endsWith('.yml') || filePath.endsWith('.yaml'));
   }
 
   /**
