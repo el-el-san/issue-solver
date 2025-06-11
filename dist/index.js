@@ -59825,7 +59825,7 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
 - Include both unit and integration tests if needed`;
     }
 
-    template += `\n\n🚨 CRITICAL FILE MODIFICATION RULES 🚨\n\nFOR MODIFY ACTIONS - NEVER USE STRING CONTENT!\nAlways use object format:\n\n1. Append: {"type": "append", "content": "text to add"}\n2. Prepend: {"type": "prepend", "content": "text to add at start"}\n3. Replace: {"type": "replace", "from": "text to find", "to": "replacement text"}\n\nEXAMPLE - Adding timestamp to README.md:\n{\n  "path": "README.md",\n  "action": "modify",\n  "changes": "Add last updated timestamp",\n  "content": {"type": "append", "content": "\\n---\\nLast updated: 2025-05-31 15:30:00"}\n}\n\n⚠️ VALIDATION WILL FAIL IF YOU USE STRING CONTENT FOR MODIFY ACTIONS!\n✅ String content is only allowed for CREATE actions.\n✅ For MODIFY actions, always use object format above.\n\nAll descriptions and reports should be in Japanese.`;
+    template += `\n\n🚨 CRITICAL FILE MODIFICATION RULES 🚨\n\nFOR MODIFY ACTIONS - NEVER USE STRING CONTENT!\nAlways use object format:\n\n1. Append: {"type": "append", "content": "text to add"}\n2. Prepend: {"type": "prepend", "content": "text to add at start"}\n3. Replace: {"type": "replace", "from": "text to find", "to": "replacement text"}\n\nEXAMPLE - Adding timestamp to README.md:\n{\n  "path": "README.md",\n  "action": "modify",\n  "changes": "Add last updated timestamp",\n  "content": {"type": "append", "content": "\\n---\\nLast updated: 2025-05-31 15:30:00"}\n}\n\n🚫 NEVER CREATE WORKFLOW FILES (.github/workflows/*.yml)\nGitHub Apps cannot create workflow files without special 'workflows' permission.\nFor automation tasks, suggest alternative solutions like:\n- Direct file modifications\n- README updates\n- Configuration file changes\n- Script creation in regular directories\n\n⚠️ VALIDATION WILL FAIL IF YOU USE STRING CONTENT FOR MODIFY ACTIONS!\n✅ String content is only allowed for CREATE actions.\n✅ For MODIFY actions, always use object format above.\n\nAll descriptions and reports should be in Japanese.`;
     
     if (analysisResult.needsImplementation) {
       const moduleType = this.issueAnalysis.repositoryContext?.packageInfo?.moduleType || 'CommonJS';
@@ -61065,6 +61065,12 @@ class SafeFileManager {
     const errors = [];
     
     for (const operation of operations) {
+      // GitHub Actionsワークフローファイルのチェック
+      if (this.isWorkflowFile(operation.path)) {
+        errors.push(`${operation.path}: GitHub App workflow files require 'workflows' permission`);
+        continue;
+      }
+      
       const validation = this.validator.validateFileOperation(operation);
       if (!validation.valid) {
         errors.push(`${operation.path}: ${validation.reason}`);
@@ -61075,6 +61081,14 @@ class SafeFileManager {
       valid: errors.length === 0,
       errors
     };
+  }
+
+  /**
+   * GitHub Actionsワークフローファイルかどうかを判定
+   */
+  isWorkflowFile(filePath) {
+    return filePath.includes('.github/workflows/') && 
+           (filePath.endsWith('.yml') || filePath.endsWith('.yaml'));
   }
 
   /**
