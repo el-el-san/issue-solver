@@ -6,6 +6,7 @@
 const { EnhancedWorkflow } = require('./enhanced-workflow');
 const { ConfigManager } = require('./config-manager');
 const { GeminiIssueSolver } = require('./gemini-solver');
+const { OpenAIIssueSolver } = require('./openai-solver');
 const { StatusCommentManager } = require('./status-comment-manager');
 const { EnhancedSolutionHandler } = require('./enhanced-solution-handler');
 const { ReportGenerator } = require('./report-generator');
@@ -37,11 +38,19 @@ async function enhancedMain(github, context) {
     await statusManager.updateStatus('starting', {
       mode: process.env.EXECUTION_MODE || 'enhanced',
       safety: process.env.DRY_RUN === 'true' ? 'dry-run' : 'live',
-      model: config.geminiModel
+      provider: config.aiProvider,
+      model: config.aiProvider === 'openai' ? config.openaiModel : config.geminiModel
     });
     
-    // Gemini solverを初期化
-    const solver = new GeminiIssueSolver(config.geminiApiKey, config);
+    // AIプロバイダーに応じてsolverを初期化
+    let solver;
+    if (config.aiProvider === 'openai') {
+      console.log('🤖 OpenAI GPTを使用してIssueを解決します');
+      solver = new OpenAIIssueSolver(config.openaiApiKey, config);
+    } else {
+      console.log('🤖 Google Geminiを使用してIssueを解決します');
+      solver = new GeminiIssueSolver(config.geminiApiKey, config);
+    }
     
     // Enhanced workflowを実行
     const workflow = new EnhancedWorkflow(config, solver);

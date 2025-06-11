@@ -3,6 +3,7 @@ const { EnhancedIssueFetcher } = require('./enhanced-issue-fetcher');
 class ConfigManager {
   constructor() {
     this.geminiApiKey = process.env.GEMINI_API_KEY;
+    this.openaiApiKey = process.env.OPENAI_API_KEY;
     this.githubToken = process.env.GITHUB_TOKEN;
     
     // 基本的なIssue情報（環境変数から - 後でAPI取得データで上書きされる）
@@ -15,7 +16,9 @@ class ConfigManager {
     // API取得した完全なIssue情報（初期化後に設定される）
     this.completeIssueData = null;
     // モデル選択ロジック
+    this.aiProvider = this.selectAIProvider();
     this.geminiModel = this.selectGeminiModel();
+    this.openaiModel = this.selectOpenAIModel();
     this.forceImplementation = process.env.FORCE_IMPLEMENTATION === 'true';
     this.targetFiles = process.env.TARGET_FILES || '';
     this.executionMode = process.env.EXECUTION_MODE || 'auto';
@@ -30,11 +33,23 @@ class ConfigManager {
     this.runTests = process.env.RUN_TESTS !== 'false'; // デフォルトは true
     this.testCommand = process.env.TEST_COMMAND || 'npm test';
     this.testMaxRetries = parseInt(process.env.TEST_MAX_RETRIES || '3', 10);
+    
+    // OpenAI API retry and timeout configuration
+    this.openaiMaxRetries = parseInt(process.env.OPENAI_MAX_RETRIES || '3', 10);
+    this.openaiRetryDelay = parseInt(process.env.OPENAI_RETRY_DELAY || '2000', 10); // 2秒
+    this.openaiTimeout = parseInt(process.env.OPENAI_TIMEOUT || '3600000', 10); // 1時間
   }
 
   async validate() {
-    if (!this.geminiApiKey) {
-      throw new Error('GEMINI_API_KEY is required');
+    // AIプロバイダーに応じたAPIキーの検証
+    if (this.aiProvider === 'openai') {
+      if (!this.openaiApiKey) {
+        throw new Error('OPENAI_API_KEY is required when using OpenAI');
+      }
+    } else {
+      if (!this.geminiApiKey) {
+        throw new Error('GEMINI_API_KEY is required when using Gemini');
+      }
     }
     
     if (!this.issueNumber) {
@@ -43,7 +58,8 @@ class ConfigManager {
     
     console.log('✅ Configuration validated');
     console.log('実行モード:', this.executionMode);
-    console.log('使用モデル:', this.geminiModel);
+    console.log('AIプロバイダー:', this.aiProvider);
+    console.log('使用モデル:', this.aiProvider === 'openai' ? this.openaiModel : this.geminiModel);
   }
 
   /**
@@ -73,7 +89,9 @@ class ConfigManager {
       }
       
       // モデル選択を再実行（コメント情報が更新されたため）
+      this.aiProvider = this.selectAIProvider();
       this.geminiModel = this.selectGeminiModel();
+      this.openaiModel = this.selectOpenAIModel();
       
       console.log('✅ Issue情報の完全取得完了');
       console.log(`📋 Issue: "${this.issueTitle}"`);
@@ -119,6 +137,104 @@ class ConfigManager {
 
   getTargetFiles() {
     return this.targetFiles ? this.targetFiles.split(',').map(f => f.trim()) : [];
+  }
+
+  selectAIProvider() {
+    // 1. 環境変数から明示的に指定されている場合
+    if (process.env.AI_PROVIDER) {
+      console.log('環境変数からAIプロバイダーを使用:', process.env.AI_PROVIDER);
+      return process.env.AI_PROVIDER.toLowerCase();
+    }
+
+    // 2. コメントボディから@gptパターンを検索
+    if (this.commentBody) {
+      const gptPatterns = [
+        /@gpt/i,
+        /use.*gpt/i,
+        /openai/i
+      ];
+
+      for (const pattern of gptPatterns) {
+        if (pattern.test(this.commentBody)) {
+          console.log('🎯 コメントから@gptトリガーを検出: OpenAI');
+          return 'openai';
+        }
+      }
+    }
+
+    // 3. Issue ボディから@gptパターンを検索
+    if (this.issueBody) {
+      const gptPatterns = [
+        /@gpt/i,
+        /use.*gpt/i,
+        /openai/i
+      ];
+
+      for (const pattern of gptPatterns) {
+        if (pattern.test(this.issueBody)) {
+          console.log('🎯 Issue本文から@gptトリガーを検出: OpenAI');
+          return 'openai';
+        }
+      }
+    }
+
+    // 4. デフォルトはGemini
+    console.log('📌 デフォルトAIプロバイダーを使用: Gemini');
+    return 'gemini';
+  }
+
+  selectOpenAIModel() {
+    // 1. 環境変数から明示的に指定されている場合
+    if (process.env.OPENAI_MODEL) {
+      console.log('環境変数からOpenAIモデルを使用:', process.env.OPENAI_MODEL);
+      return process.env.OPENAI_MODEL;
+    }
+
+    // 2. コメントボディから指定を検索
+    if (this.commentBody) {
+      // モデル切り替えパターン
+      const modelPatterns = [
+        { pattern: /codex-mini-latest/i, model: 'codex-mini-latest' },
+        { pattern: /gpt-4o-mini/i, model: 'gpt-4o-mini' },
+        { pattern: /gpt-4o/i, model: 'gpt-4o' },
+        { pattern: /gpt-4\.1-mini/i, model: 'gpt-4.1-mini' },
+        { pattern: /gpt-4\.1/i, model: 'gpt-4.1' },
+        { pattern: /gpt-3\.5-turbo/i, model: 'gpt-3.5-turbo' },
+        { pattern: /o3-mini/i, model: 'o3-mini' },
+        { pattern: /o4-mini/i, model: 'o4-mini' }
+      ];
+
+      for (const { pattern, model } of modelPatterns) {
+        if (pattern.test(this.commentBody)) {
+          console.log(`🎯 コメントからOpenAIモデルを検出: ${model}`);
+          return model;
+        }
+      }
+    }
+
+    // 3. Issue ボディから指定を検索
+    if (this.issueBody) {
+      const modelPatterns = [
+        { pattern: /codex-mini-latest/i, model: 'codex-mini-latest' },
+        { pattern: /gpt-4o-mini/i, model: 'gpt-4o-mini' },
+        { pattern: /gpt-4o/i, model: 'gpt-4o' },
+        { pattern: /gpt-4\.1-mini/i, model: 'gpt-4.1-mini' },
+        { pattern: /gpt-4\.1/i, model: 'gpt-4.1' },
+        { pattern: /gpt-3\.5-turbo/i, model: 'gpt-3.5-turbo' }
+      ];
+
+      for (const { pattern, model } of modelPatterns) {
+        if (pattern.test(this.issueBody)) {
+          console.log(`🎯 Issue本文からOpenAIモデルを検出: ${model}`);
+          return model;
+        }
+      }
+    }
+
+    // 4. デフォルトモデル (codex-mini-latest)
+    const defaultModel = 'codex-mini-latest';
+    console.log('📌 デフォルトOpenAIモデルを使用:', defaultModel);
+    return defaultModel;
   }
 
   selectGeminiModel() {

@@ -44,7 +44,13 @@ describe('GeminiIssueSolver', () => {
     beforeEach(() => {
       solver.issueAnalysis = {
         title: 'General Enhancement',
-        body: 'This is a general enhancement request'
+        body: 'This is a general enhancement request',
+        technicalContext: {
+          technologies: [],
+          hasCodeBlocks: false,
+          hasStackTrace: false,
+          hasFileReferences: false
+        }
       };
     });
     
@@ -109,7 +115,13 @@ describe('GeminiIssueSolver', () => {
       const testSolver = new GeminiIssueSolver('test-api-key', testConfig);
       testSolver.issueAnalysis = {
         title: testConfig.issueTitle,
-        body: testConfig.issueBody
+        body: testConfig.issueBody,
+        technicalContext: {
+          technologies: [],
+          hasCodeBlocks: false,
+          hasStackTrace: false,
+          hasFileReferences: false
+        }
       };
       const template = testSolver.getPromptTemplate();
       
@@ -127,7 +139,13 @@ describe('GeminiIssueSolver', () => {
       const testSolver = new GeminiIssueSolver('test-api-key', testConfig);
       testSolver.issueAnalysis = {
         title: testConfig.issueTitle,
-        body: testConfig.issueBody
+        body: testConfig.issueBody,
+        technicalContext: {
+          technologies: [],
+          hasCodeBlocks: false,
+          hasStackTrace: false,
+          hasFileReferences: false
+        }
       };
       const template = testSolver.getPromptTemplate();
       
@@ -143,7 +161,13 @@ describe('GeminiIssueSolver', () => {
         labels: [],
         relevantFiles: ['test.js'],
         fileContents: {},
-        errorInfo: []
+        errorInfo: [],
+        technicalContext: {
+          technologies: [],
+          hasCodeBlocks: false,
+          hasStackTrace: false,
+          hasFileReferences: false
+        }
       };
     });
 
@@ -192,7 +216,13 @@ describe('GeminiIssueSolver', () => {
         labels: [],
         relevantFiles: [],
         fileContents: {},
-        errorInfo: []
+        errorInfo: [],
+        technicalContext: {
+          technologies: [],
+          hasCodeBlocks: false,
+          hasStackTrace: false,
+          hasFileReferences: false
+        }
       };
     });
 
