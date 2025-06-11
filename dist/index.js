@@ -60817,7 +60817,7 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
                 description: "Implementation report in Japanese"
               }
             },
-            required: ["type", "confidence", "analysis", "description", "files"]
+            required: ["type", "confidence", "analysis", "planning", "description", "files", "implementation", "tests", "report"]
           };
 
           // /responsesエンドポイント用にリクエスト形式を変換（Structured Outputs対応）
