@@ -12,10 +12,10 @@ class FileManager {
     
     switch (action) {
       case 'create':
-        await this.createFile(filePath, solution, issueAnalysis);
+        await this.createFile(filePath, fileAction, solution, issueAnalysis);
         break;
       case 'modify':
-        await this.modifyFile(filePath, changes, solution, issueAnalysis);
+        await this.modifyFile(filePath, fileAction, solution, issueAnalysis);
         break;
       case 'delete':
         if (fs.existsSync(filePath)) {
@@ -26,13 +26,13 @@ class FileManager {
     }
   }
 
-  async createFile(filePath, solution, issueAnalysis) {
+  async createFile(filePath, fileAction, solution, issueAnalysis) {
     const dir = path.dirname(filePath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
     
-    let content = solution.implementation;
+    let content = fileAction.content || solution.implementation;
     
     // ファイル拡張子に基づいて適切なコンテンツを生成
     if (filePath.endsWith('.test.js') || filePath.endsWith('.spec.js')) {
@@ -257,15 +257,49 @@ describe('${title}', () => {
     return text.includes('ハローワールド') || text.includes('hello world');
   }
 
-  async modifyFile(filePath, changes, solution, issueAnalysis) {
+  async modifyFile(filePath, fileAction, solution, issueAnalysis) {
     if (!fs.existsSync(filePath)) {
       console.log('ファイルが存在しないため作成:', filePath);
-      await this.createFile(filePath, solution, issueAnalysis);
+      await this.createFile(filePath, fileAction, solution, issueAnalysis);
       return;
     }
     
     const currentContent = fs.readFileSync(filePath, 'utf8');
     let modifiedContent = currentContent;
+    
+    // Handle new modification types
+    if (fileAction.modification_type) {
+      switch (fileAction.modification_type) {
+        case 'append':
+          modifiedContent = currentContent + (fileAction.modification_content || '');
+          break;
+        case 'prepend':
+          modifiedContent = (fileAction.modification_content || '') + currentContent;
+          break;
+        case 'replace':
+          if (fileAction.replace_from && fileAction.replace_to) {
+            modifiedContent = currentContent.replace(new RegExp(fileAction.replace_from, 'g'), fileAction.replace_to);
+          }
+          break;
+        default:
+          // Fall back to existing logic
+          break;
+      }
+      
+      // If modification was successful, skip the old modification logic
+      if (modifiedContent !== currentContent) {
+        // Content validation and write
+        const validation = this.validator.isContentSafe(modifiedContent, filePath);
+        if (!validation.valid) {
+          console.error(`❌ ファイル内容の検証に失敗: ${filePath}: ${validation.reason}`);
+          throw new Error(`ファイル操作の検証に失敗: ${filePath}: ${validation.reason}`);
+        }
+        
+        fs.writeFileSync(filePath, modifiedContent);
+        console.log('修正:', filePath);
+        return;
+      }
+    }
     
     // README.mdの場合は実際の内容を実装する
     if (filePath === 'README.md') {

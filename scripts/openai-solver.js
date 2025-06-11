@@ -351,7 +351,7 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
 - Include both unit and integration tests if needed`;
     }
 
-    template += `\n\nCRITICAL FILE MODIFICATION RULES:\n\nFor modify actions, use these content formats:\n1. Append: {"type": "append", "content": "text to add"}\n2. Prepend: {"type": "prepend", "content": "text to add at start"}\n3. Replace: {"type": "replace", "from": "text to find", "to": "replacement text"}\n\nEXAMPLE - Adding timestamp to README.md:\n{\n  "path": "README.md",\n  "action": "modify",\n  "changes": "Add last updated timestamp",\n  "content": {"type": "append", "content": "\\n---\\nLast updated: 2025-05-31 15:30:00"}\n}\n\nWARNING: Using string content in modify action will REPLACE the entire file!\nALWAYS use object format to preserve existing content.\nAll descriptions and reports should be in Japanese.`;
+    template += `\n\nCRITICAL FILE MODIFICATION RULES:\n\nFor modify actions, use these fields for content modification:\n1. Append: Set modification_type: "append", modification_content: "text to add"\n2. Prepend: Set modification_type: "prepend", modification_content: "text to add at start"\n3. Replace: Set modification_type: "replace", replace_from: "text to find", replace_to: "replacement text"\n\nEXAMPLE - Adding timestamp to README.md:\n{\n  "path": "README.md",\n  "action": "modify",\n  "changes": "Add last updated timestamp",\n  "content": "",\n  "modification_type": "append",\n  "modification_content": "\\n---\\nLast updated: 2025-05-31 15:30:00"\n}\n\nFor create actions, use the content field directly.\nAll descriptions and reports should be in Japanese.`;
     
     if (analysisResult.needsImplementation) {
       template += `\n\nIMPLEMENTATION REQUIREMENTS:\n- Create actual ${analysisResult.technologies.join('/')} files\n- Provide complete, working code\n- Include proper imports/dependencies\n- Follow ${this.issueAnalysis.repositoryContext?.framework || 'project'} conventions\n- Ensure files are in correct directories`;
@@ -404,22 +404,11 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
                     path: { type: "string" },
                     action: { type: "string", enum: ["create", "modify", "delete"] },
                     changes: { type: "string" },
-                    content: {
-                      oneOf: [
-                        { type: "string" },
-                        {
-                          type: "object",
-                          additionalProperties: false,
-                          properties: {
-                            type: { type: "string", enum: ["append", "prepend", "replace"] },
-                            content: { type: "string" },
-                            from: { type: "string" },
-                            to: { type: "string" }
-                          },
-                          required: ["type"]
-                        }
-                      ]
-                    }
+                    content: { type: "string" },
+                    modification_type: { type: "string", enum: ["append", "prepend", "replace"] },
+                    modification_content: { type: "string" },
+                    replace_from: { type: "string" },
+                    replace_to: { type: "string" }
                   },
                   required: ["path", "action", "changes", "content"]
                 }
