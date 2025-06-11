@@ -33,7 +33,9 @@ on:
 
 jobs:
   solve-issue:
-    if: contains(github.event.issue.labels.*.name, 'solve')
+    if: |
+      contains(github.event.issue.labels.*.name, 'solve') ||
+      contains(github.event.issue.body, '@gemini')
     runs-on: ubuntu-latest
     
     permissions:
@@ -76,9 +78,13 @@ on:
 jobs:
   test-issue-solver:
     if: |
-      github.event_name == 'push' ||
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'test-solve')) ||
+      (github.event_name == 'issues' && (
+        contains(github.event.issue.labels.*.name, 'test-solve') ||
+        contains(github.event.issue.body, '@gemini') ||
+        contains(github.event.issue.body, '@gpt') ||
+        contains(github.event.issue.body, '@GPT') ||
+        contains(github.event.issue.body, '@GEMINI')
+      )) ||
       (github.event_name == 'issue_comment' && (
         contains(github.event.comment.body, '@gemini') ||
         contains(github.event.comment.body, '@gpt') ||
@@ -109,13 +115,17 @@ jobs:
           echo "Repository: ${{ github.repository }}"
           echo "Actor: ${{ github.actor }}"
           
-          # Validate issue number is available
-          ISSUE_NUM="${{ github.event_name == 'issue_comment' && github.event.comment.issue.number || github.event.issue.number }}"
-          if [ -z "$ISSUE_NUM" ]; then
-            echo "ERROR: No issue number found for this event"
-            exit 1
+          # Validate issue number is available for issue-related events
+          if [ "${{ github.event_name }}" = "issue_comment" ] || [ "${{ github.event_name }}" = "issues" ]; then
+            ISSUE_NUM="${{ github.event_name == 'issue_comment' && github.event.comment.issue.number || github.event.issue.number }}"
+            if [ -z "$ISSUE_NUM" ]; then
+              echo "ERROR: No issue number found for this event"
+              exit 1
+            fi
+            echo "Using issue number: $ISSUE_NUM"
+          else
+            echo "Non-issue event - using test issue number: 1"
           fi
-          echo "Using issue number: $ISSUE_NUM"
     
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -123,7 +133,7 @@ jobs:
       - name: Test Issue Solver with Latest Version
         uses: el-el-san/issue-solver@main  # 最新開発版
         with:
-          issue-number: ${{ github.event_name == 'issue_comment' && github.event.comment.issue.number || github.event.issue.number }}
+          issue-number: ${{ (github.event_name == 'issue_comment' && github.event.comment.issue.number) || (github.event_name == 'issues' && github.event.issue.number) || '1' }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           safety-mode: 'normal'
@@ -291,7 +301,9 @@ jobs:
   solve-issue:
     runs-on: ubuntu-latest
     # Issueまたはコメントに@geminiが含まれている場合のみ実行
-    if: contains(github.event.issue.body, '@gemini') || contains(github.event.comment.body, '@gemini')
+    if: |
+      (github.event_name == 'issues' && contains(github.event.issue.body, '@gemini')) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@gemini'))
     
     permissions:
       contents: write
