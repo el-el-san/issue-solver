@@ -351,7 +351,7 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
 - Include both unit and integration tests if needed`;
     }
 
-    template += `\n\nCRITICAL FILE MODIFICATION RULES:\n\nFor modify actions, use these fields for content modification:\n1. Append: Set modification_type: "append", modification_content: "text to add"\n2. Prepend: Set modification_type: "prepend", modification_content: "text to add at start"\n3. Replace: Set modification_type: "replace", replace_from: "text to find", replace_to: "replacement text"\n\nEXAMPLE - Adding timestamp to README.md:\n{\n  "path": "README.md",\n  "action": "modify",\n  "changes": "Add last updated timestamp",\n  "content": "",\n  "modification_type": "append",\n  "modification_content": "\\n---\\nLast updated: 2025-05-31 15:30:00"\n}\n\nFor create actions, use the content field directly.\nAll descriptions and reports should be in Japanese.`;
+    template += `\n\nCRITICAL FILE MODIFICATION RULES:\n\nAll file objects must include ALL these fields:\n- path: file path\n- action: "create", "modify", or "delete"\n- changes: description of changes\n- content: main content (for create) or empty string (for modify)\n- modification_type: "append", "prepend", "replace", or "" (empty for create/delete)\n- modification_content: content to add/modify or "" (empty if not used)\n- replace_from: text to find for replace or "" (empty if not used)\n- replace_to: replacement text or "" (empty if not used)\n\nEXAMPLE - Adding timestamp to README.md:\n{\n  "path": "README.md",\n  "action": "modify",\n  "changes": "Add last updated timestamp",\n  "content": "",\n  "modification_type": "append",\n  "modification_content": "\\n---\\nLast updated: 2025-05-31 15:30:00",\n  "replace_from": "",\n  "replace_to": ""\n}\n\nEXAMPLE - Creating new file:\n{\n  "path": "hello.js",\n  "action": "create",\n  "changes": "Create hello world file",\n  "content": "console.log('Hello, World!');",\n  "modification_type": "",\n  "modification_content": "",\n  "replace_from": "",\n  "replace_to": ""\n}\n\nAll descriptions and reports should be in Japanese.`;
     
     if (analysisResult.needsImplementation) {
       template += `\n\nIMPLEMENTATION REQUIREMENTS:\n- Create actual ${analysisResult.technologies.join('/')} files\n- Provide complete, working code\n- Include proper imports/dependencies\n- Follow ${this.issueAnalysis.repositoryContext?.framework || 'project'} conventions\n- Ensure files are in correct directories`;
@@ -399,17 +399,18 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
                 type: "array",
                 items: {
                   type: "object",
+                  additionalProperties: false,
                   properties: {
                     path: { type: "string" },
                     action: { type: "string", enum: ["create", "modify", "delete"] },
                     changes: { type: "string" },
                     content: { type: "string" },
-                    modification_type: { type: "string", enum: ["append", "prepend", "replace"] },
+                    modification_type: { type: "string" },
                     modification_content: { type: "string" },
                     replace_from: { type: "string" },
                     replace_to: { type: "string" }
                   },
-                  required: ["path", "action", "changes", "content"]
+                  required: ["path", "action", "changes", "content", "modification_type", "modification_content", "replace_from", "replace_to"]
                 }
               },
               implementation: {

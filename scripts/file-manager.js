@@ -268,7 +268,7 @@ describe('${title}', () => {
     let modifiedContent = currentContent;
     
     // Handle new modification types
-    if (fileAction.modification_type) {
+    if (fileAction.modification_type && fileAction.modification_type.trim() !== '') {
       switch (fileAction.modification_type) {
         case 'append':
           modifiedContent = currentContent + (fileAction.modification_content || '');
@@ -277,7 +277,8 @@ describe('${title}', () => {
           modifiedContent = (fileAction.modification_content || '') + currentContent;
           break;
         case 'replace':
-          if (fileAction.replace_from && fileAction.replace_to) {
+          if (fileAction.replace_from && fileAction.replace_to && 
+              fileAction.replace_from.trim() !== '' && fileAction.replace_to.trim() !== '') {
             modifiedContent = currentContent.replace(new RegExp(fileAction.replace_from, 'g'), fileAction.replace_to);
           }
           break;
