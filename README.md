@@ -24,18 +24,27 @@ Claude Code Actions ライクな動作を目指しています
 ### エンドユーザー向け設定（安定版）
 
 ```yaml
-# .github/workflows/gemini-solver.yml
+# .github/workflows/issue-solver.yml
 name: Issue Solver - Production
 
 on:
   issues:
     types: [opened, labeled]
+  issue_comment:
+    types: [created]
 
 jobs:
   solve-issue:
     if: |
-      contains(github.event.issue.labels.*.name, 'solve') ||
-      contains(github.event.issue.body, '@gemini')
+      (github.event_name == 'issues' && (
+        contains(github.event.issue.labels.*.name, 'solve') ||
+        contains(github.event.issue.body, '@gemini') ||
+        contains(github.event.issue.body, '@gpt')
+      )) ||
+      (github.event_name == 'issue_comment' && (
+        contains(github.event.comment.body, '@gemini') ||
+        contains(github.event.comment.body, '@gpt')
+      ))
     runs-on: ubuntu-latest
     
     permissions:
@@ -46,11 +55,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Solve Issue with Gemini
+      - name: Solve Issue with AI
         uses: el-el-san/issue-solver@v1.0.8  # 安定版
         with:
-          issue-number: ${{ github.event.issue.number }}
+          issue-number: ${{ github.event.issue.number || github.event.comment.issue.number }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           safety-mode: 'normal'
           dry-run: 'false'
@@ -135,6 +145,7 @@ jobs:
         with:
           issue-number: ${{ (github.event_name == 'issue_comment' && github.event.comment.issue.number) || (github.event_name == 'issues' && github.event.issue.number) || '1' }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           safety-mode: 'normal'
           dry-run: 'false'  # 開発時もファイル生成を確認
@@ -150,6 +161,7 @@ jobs:
 Repository Settings > Secrets and variables > Actions で以下を設定:
 
 - `GEMINI_API_KEY`: Google Gemini APIキー ([取得方法](https://ai.google.dev/))
+- `OPENAI_API_KEY`: OpenAI APIキー ([取得方法](https://platform.openai.com/api-keys))
 
 ###  AIモデルの切り替え
 
@@ -314,11 +326,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       
-      - name: Solve Issue with Gemini
+      - name: Solve Issue with AI
         uses: el-el-san/issue-solver@v1.0.8
         with:
           issue-number: ${{ github.event.issue.number || github.event.comment.issue.number }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           safety-mode: 'normal'
           dry-run: 'false'
@@ -337,11 +350,12 @@ jobs:
 Repository Settings > Secrets and variables > Actions で以下を設定:
 
 - `GEMINI_API_KEY`: Google Gemini APIキー ([取得方法](https://ai.google.dev/))
+- `OPENAI_API_KEY`: OpenAI APIキー ([取得方法](https://platform.openai.com/api-keys))
 
 #### 使用方法
 
 1. 上記のworkflowファイルをリポジトリに追加
-2. Gemini APIキーをシークレットに設定
+2. 必要なAPIキーをシークレットに設定
 3. 以下の方法で実行：
    - **Issue作成時**: Issue本文に `@gemini` を含める
    - **コメント実行**: Issue内のコメントに `@gemini` を含める
