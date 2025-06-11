@@ -23,15 +23,17 @@ async function enhancedMain(github, context) {
     console.log(`実行モード: ${process.env.EXECUTION_MODE || 'enhanced'}`);
     console.log(`安全モード: ${process.env.DRY_RUN === 'true' ? 'DRY_RUN' : 'LIVE'}`);
     
-    // 設定を初期化
+    // 設定を初期化（基本的なチェックのみ）
     config = new ConfigManager();
-    await config.validate();
-    
-    // フォールバック後のプロバイダーを確認
-    console.log(`📌 最終的なAIプロバイダー: ${config.aiProvider}`);
     
     // GitHub APIからIssueの完全な情報を取得
     await config.loadCompleteIssueData(github, context);
+    
+    // Issue情報取得後に診断情報を出力し、詳細な検証を実行
+    await config.validateWithDiagnostics();
+    
+    // 最終的なプロバイダーを確認
+    console.log(`📌 最終的なAIプロバイダー: ${config.aiProvider}`);
     
     // ステータスコメントマネージャーを初期化
     statusManager = new StatusCommentManager(github, context);

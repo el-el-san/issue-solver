@@ -56884,7 +56884,20 @@ class ConfigManager {
   }
 
   async validate() {
-    // 詳細な診断情報を出力
+    // 基本的な必須パラメータのみチェック
+    if (!this.issueNumber) {
+      throw new Error('ISSUE_NUMBER is required');
+    }
+    
+    console.log('✅ Configuration validated');
+    console.log('実行モード:', this.executionMode);
+    console.log('AIプロバイダー:', this.aiProvider);
+    console.log('使用モデル:', this.aiProvider === 'openai' ? this.openaiModel : this.geminiModel);
+  }
+
+  async validateWithDiagnostics() {
+    // Issue情報取得後の最新データで診断情報を出力
+    this.updateIssueInfoFromCompleteData();
     this.logDiagnosticInfo();
     
     // AIプロバイダーに応じたAPIキーの厳密な検証
@@ -56897,15 +56910,17 @@ class ConfigManager {
         this.throwDetailedGeminiError();
       }
     }
-    
-    if (!this.issueNumber) {
-      throw new Error('ISSUE_NUMBER is required');
+  }
+
+  updateIssueInfoFromCompleteData() {
+    if (this.completeIssueData) {
+      // 完全なIssue情報で環境変数データを更新
+      this.issueBody = this.completeIssueData.body;
+      this.issueTitle = this.completeIssueData.title;
+      
+      // AIプロバイダーを再選択（最新のIssue本文に基づいて）
+      this.aiProvider = this.selectAIProvider();
     }
-    
-    console.log('✅ Configuration validated');
-    console.log('実行モード:', this.executionMode);
-    console.log('AIプロバイダー:', this.aiProvider);
-    console.log('使用モデル:', this.aiProvider === 'openai' ? this.openaiModel : this.geminiModel);
   }
 
   /**
@@ -57626,15 +57641,17 @@ async function enhancedMain(github, context) {
     console.log(`実行モード: ${process.env.EXECUTION_MODE || 'enhanced'}`);
     console.log(`安全モード: ${process.env.DRY_RUN === 'true' ? 'DRY_RUN' : 'LIVE'}`);
     
-    // 設定を初期化
+    // 設定を初期化（基本的なチェックのみ）
     config = new ConfigManager();
-    await config.validate();
-    
-    // フォールバック後のプロバイダーを確認
-    console.log(`📌 最終的なAIプロバイダー: ${config.aiProvider}`);
     
     // GitHub APIからIssueの完全な情報を取得
     await config.loadCompleteIssueData(github, context);
+    
+    // Issue情報取得後に診断情報を出力し、詳細な検証を実行
+    await config.validateWithDiagnostics();
+    
+    // 最終的なプロバイダーを確認
+    console.log(`📌 最終的なAIプロバイダー: ${config.aiProvider}`);
     
     // ステータスコメントマネージャーを初期化
     statusManager = new StatusCommentManager(github, context);
