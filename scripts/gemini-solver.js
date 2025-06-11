@@ -208,6 +208,8 @@ class GeminiIssueSolver {
       adjustment = `\n\nIMPORTANT: Previous attempt timed out. Please provide a more concise response with only essential information.\n`;
     } else if (error.message.includes('quota') || error.message.includes('rate')) {
       adjustment = `\n\nIMPORTANT: API rate limit encountered. Simplifying request.\n`;
+    } else if (error.message.includes('文字列contentは許可されません') || error.message.includes('modifyアクション')) {
+      adjustment = `\n\n🚨 CRITICAL FIX REQUIRED: You used STRING content for modify action, which is forbidden!\n\nFOR MODIFY ACTIONS, ALWAYS USE OBJECT FORMAT:\n- Append: {"type": "append", "content": "text to add"}\n- Prepend: {"type": "prepend", "content": "text to add at start"}\n- Replace: {"type": "replace", "from": "text to find", "to": "replacement text"}\n\nString content is ONLY allowed for CREATE actions!\n`;
     }
     
     // 試行回数に応じて簡略化
@@ -419,7 +421,7 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
 - Include both unit and integration tests if needed`;
     }
 
-    template += `\n\nCRITICAL FILE MODIFICATION RULES:\n\nFor modify actions, use these content formats:\n1. Append: {"type": "append", "content": "text to add"}\n2. Prepend: {"type": "prepend", "content": "text to add at start"}\n3. Replace: {"type": "replace", "from": "text to find", "to": "replacement text"}\n\nEXAMPLE - Adding timestamp to README.md:\n{\n  "path": "README.md",\n  "action": "modify",\n  "changes": "Add last updated timestamp",\n  "content": {"type": "append", "content": "\\n---\\nLast updated: 2025-05-31 15:30:00"}\n}\n\nWARNING: Using string content in modify action will REPLACE the entire file!\nALWAYS use object format to preserve existing content.\nAll descriptions and reports should be in Japanese.`;
+    template += `\n\n🚨 CRITICAL FILE MODIFICATION RULES 🚨\n\nFOR MODIFY ACTIONS - NEVER USE STRING CONTENT!\nAlways use object format:\n\n1. Append: {"type": "append", "content": "text to add"}\n2. Prepend: {"type": "prepend", "content": "text to add at start"}\n3. Replace: {"type": "replace", "from": "text to find", "to": "replacement text"}\n\nEXAMPLE - Adding timestamp to README.md:\n{\n  "path": "README.md",\n  "action": "modify",\n  "changes": "Add last updated timestamp",\n  "content": {"type": "append", "content": "\\n---\\nLast updated: 2025-05-31 15:30:00"}\n}\n\n⚠️ VALIDATION WILL FAIL IF YOU USE STRING CONTENT FOR MODIFY ACTIONS!\n✅ String content is only allowed for CREATE actions.\n✅ For MODIFY actions, always use object format above.\n\nAll descriptions and reports should be in Japanese.`;
     
     if (analysisResult.needsImplementation) {
       const moduleType = this.issueAnalysis.repositoryContext?.packageInfo?.moduleType || 'CommonJS';
