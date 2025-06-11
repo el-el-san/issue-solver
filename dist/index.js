@@ -56845,8 +56845,8 @@ const { EnhancedIssueFetcher } = __nccwpck_require__(2521);
 
 class ConfigManager {
   constructor() {
-    this.geminiApiKey = process.env.GEMINI_API_KEY;
-    this.openaiApiKey = process.env.OPENAI_API_KEY;
+    this.geminiApiKey = process.env.GEMINI_API_KEY || process.env['INPUT_GEMINI-API-KEY'];
+    this.openaiApiKey = process.env.OPENAI_API_KEY || process.env['INPUT_OPENAI-API-KEY'];
     this.githubToken = process.env.GITHUB_TOKEN;
     
     // 基本的なIssue情報（環境変数から - 後でAPI取得データで上書きされる）
