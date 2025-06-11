@@ -101,7 +101,7 @@ Repository Settings > Secrets and variables > Actions で以下を設定:
 ###  AIモデルの切り替え
 
 #### デフォルトモデル
-- **gemini-2.5-flash-preview-05-20**: 高速処理モデル（デフォルト）
+- **gemini-2.5-pro-preview-06-05**: 高精度モデル（デフォルト）
 
 #### モデル切り替え方法
 
@@ -127,8 +127,8 @@ Repository Settings > Secrets and variables > Actions で以下を設定:
    ```
 
 4. **利用可能なモデル**:
-   - `gemini-2.5-flash-preview-05-20` - 高速処理モデル（デフォルト）
-   - `gemini-2.5-pro-preview-06-05` - 高精度モデル
+   - `gemini-2.5-pro-preview-06-05` - 高精度モデル（デフォルト）
+   - `gemini-2.5-flash-preview-05-20` - 高速処理モデル
 
 #### モデル切り替えトリガー
 - `@gemini-flash` - Flash モデルを使用
@@ -158,8 +158,9 @@ GitHub Actionsの「Enhanced Gemini Issue Solver」から：
 以下の方法でワークフローが自動実行されます：
 
 - **Issue作成時**: Issue本文に `@gemini` を含める
-- **コメント**: `@gemini` をコメントに含める  
-- **ラベル付与**: `gemini-auto` または `ai-assistance` ラベルを付ける
+- **コメント実行**: Issue内のコメントに `@gemini` を含める
+- **ラベル付与**: `solve` ラベルを付ける
+- **AIプロバイダー切り替え**: `@gpt` でOpenAI GPT使用
 
 ```
 @gemini
@@ -286,8 +287,23 @@ Repository Settings > Secrets and variables > Actions で以下を設定:
 
 1. 上記のworkflowファイルをリポジトリに追加
 2. Gemini APIキーをシークレットに設定
-3. Issue本文またはコメントに `@gemini` を含めて投稿
+3. 以下の方法で実行：
+   - **Issue作成時**: Issue本文に `@gemini` を含める
+   - **コメント実行**: Issue内のコメントに `@gemini` を含める
+   - **モデル指定**: `@gemini-pro` や `@gemini-flash` でモデル選択
 4. 自動的にIssue解決が開始されます
+
+#### コメント実行の例
+```markdown
+@gemini
+このログイン機能にバグがあります。修正してください。
+
+@gemini-pro
+高精度モデルでユーザー認証機能を実装してください。
+
+@gpt
+GPT-4を使ってこの問題を解決してください。
+```
 
 
 
