@@ -367,9 +367,13 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
       }, timeout);
       
       try {
-        // codex-mini-latestモデルは/responsesエンドポイントを使用
-        if (requestConfig.model === 'codex-mini-latest') {
-          // Structured Outputsのスキーマを定義
+        // Structured Outputsサポートモデル判定
+        const supportsStructuredOutputs = requestConfig.model.includes('codex') || 
+                                         requestConfig.model.includes('o3') ||
+                                         requestConfig.model.startsWith('gpt-4o');
+        
+        if (supportsStructuredOutputs) {
+          // Structured Outputsのスキーマを定義（codex/o3/gpt-4o共通）
           const jsonSchema = {
             type: "object",
             additionalProperties: false,
@@ -429,36 +433,23 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
             required: ["type", "confidence", "analysis", "planning", "description", "files", "implementation", "tests", "report"]
           };
 
-          // /responsesエンドポイント用にリクエスト形式を変換（Structured Outputs対応）
-          const responsesConfig = {
-            model: requestConfig.model,
-            input: requestConfig.messages.map(msg => ({
-              role: msg.role,
-              content: msg.content
-            })),
-            text: {
-              format: {
-                type: "json_schema",
-                strict: true,
+          // Structured Outputsを使用した標準的な/chat/completions（codex/o3/gpt-4o共通処理）
+          const structuredConfig = {
+            ...requestConfig,
+            response_format: {
+              type: "json_schema",
+              json_schema: {
                 name: "issue_solution",
+                strict: true,
                 schema: jsonSchema
               }
             }
           };
-          const result = await this.client.responses.parse(responsesConfig);
-          
-          // /chat/completions形式にレスポンスを変換
-          const convertedResult = {
-            choices: [{
-              message: {
-                content: JSON.stringify(result.output_parsed || result.output_text || result.output || {})
-              }
-            }]
-          };
+          const result = await this.client.chat.completions.create(structuredConfig);
           clearTimeout(timeoutId);
-          resolve(convertedResult);
+          resolve(result);
         } else {
-          // 他のモデルは従来通り/chat/completionsを使用
+          // 従来のモデル（gpt-3.5-turbo, gpt-4等）は基本的な/chat/completionsを使用
           const result = await this.client.chat.completions.create(requestConfig);
           clearTimeout(timeoutId);
           resolve(result);
