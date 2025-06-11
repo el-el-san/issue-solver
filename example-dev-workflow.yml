@@ -15,7 +15,7 @@ jobs:
   test-issue-solver:
     if: |
       (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'test-solve')) ||
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@gemini')) ||
+      (github.event_name == 'issue_comment' && (contains(github.event.comment.body, '@gemini') || contains(github.event.comment.body, '@gpt') || contains(github.event.comment.body, '@GPT') || contains(github.event.comment.body, '@GEMINI'))) ||
       (github.event_name == 'push') ||
       (github.event_name == 'pull_request')
     runs-on: ubuntu-latest

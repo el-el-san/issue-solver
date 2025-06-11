@@ -123,11 +123,12 @@ class EnhancedIssueFetcher {
   }
 
   /**
-   * @geminiトリガーコメントを検索
+   * @geminiトリガーコメントを検索（@gpt/@GPTトリガーも含む）
    */
   findGeminiTriggerComments(comments) {
     const geminiTriggerPatterns = [
       /@gemini/i,
+      /@gpt/i,  
       /@ai/i,
       /gemini/i,
       /solve this/i,
@@ -163,9 +164,9 @@ class EnhancedIssueFetcher {
       content += `## Labels\n${issue.labels.map(l => l.name).join(', ')}\n\n`;
     }
 
-    // 最新の@geminiコメントを優先表示
+    // 最新の@gemini/@gptコメントを優先表示
     if (latestGeminiComment) {
-      content += `## Latest @gemini Request (${latestGeminiComment.created_at})\n`;
+      content += `## Latest AI Request (${latestGeminiComment.created_at})\n`;
       content += `Author: ${latestGeminiComment.author}\n`;
       content += `${latestGeminiComment.body}\n\n`;
     }
@@ -194,7 +195,7 @@ class EnhancedIssueFetcher {
       issueTitle: issue.title,
       issueBody: issue.body || '',
       
-      // 最重要：最新の@geminiコメント
+      // 最重要：最新の@gemini/@gptコメント
       primaryRequest: latestGeminiComment ? latestGeminiComment.body : issue.body,
       requestAuthor: latestGeminiComment ? latestGeminiComment.author : issue.user.login,
       requestDate: latestGeminiComment ? latestGeminiComment.created_at : issue.created_at,
@@ -203,7 +204,7 @@ class EnhancedIssueFetcher {
       labels: issue.labels.map(l => l.name),
       commentCount: comments.length,
       hasMultipleRequests: comments.filter(c => 
-        c.body && (c.body.includes('@gemini') || c.body.includes('@ai'))
+        c.body && (/@gemini|@gpt|@ai/i.test(c.body))
       ).length > 1,
       
       // エラー情報（全コメントから抽出）
@@ -254,7 +255,7 @@ class EnhancedIssueFetcher {
     
     const flow = [];
     comments.forEach((comment, index) => {
-      const isGeminiTrigger = /@gemini|@ai|gemini/i.test(comment.body);
+      const isGeminiTrigger = /@gemini|@gpt|@ai|gemini/i.test(comment.body);
       flow.push({
         index: index + 1,
         author: comment.user.login,

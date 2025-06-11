@@ -82,10 +82,10 @@ class ConfigManager {
       this.issueBody = this.completeIssueData.body;
       this.issueLabels = this.completeIssueData.labels.join(',');
       
-      // 最新の@geminiコメントがあれば、それを優先
+      // 最新の@gemini/@gptコメントがあれば、それを優先
       if (this.completeIssueData.latestGeminiComment) {
         this.commentBody = this.completeIssueData.latestGeminiComment.body;
-        console.log(`🎯 最新の@geminiコメントを検出: ${this.completeIssueData.latestGeminiComment.author}`);
+        console.log(`🎯 最新のAIトリガーコメントを検出: ${this.completeIssueData.latestGeminiComment.author}`);
       }
       
       // モデル選択を再実行（コメント情報が更新されたため）
@@ -96,7 +96,7 @@ class ConfigManager {
       console.log('✅ Issue情報の完全取得完了');
       console.log(`📋 Issue: "${this.issueTitle}"`);
       console.log(`💬 コメント: ${this.completeIssueData.totalComments}件`);
-      console.log(`🎯 @geminiトリガー: ${this.completeIssueData.geminiTriggerComments.length}件`);
+      console.log(`🎯 AIトリガー: ${this.completeIssueData.geminiTriggerComments.length}件`);
       
     } catch (error) {
       console.error('❌ Issue情報の完全取得に失敗:', error.message);
@@ -146,7 +146,7 @@ class ConfigManager {
       return process.env.AI_PROVIDER.toLowerCase();
     }
 
-    // 2. コメントボディから@gptパターンを検索
+    // 2. コメントボディから@gptパターンを検索（大文字小文字を区別しない）
     if (this.commentBody) {
       const gptPatterns = [
         /@gpt/i,
@@ -162,7 +162,7 @@ class ConfigManager {
       }
     }
 
-    // 3. Issue ボディから@gptパターンを検索
+    // 3. Issue ボディから@gptパターンを検索（大文字小文字を区別しない）
     if (this.issueBody) {
       const gptPatterns = [
         /@gpt/i,

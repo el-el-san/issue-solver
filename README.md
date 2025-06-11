@@ -77,7 +77,7 @@ jobs:
   test-issue-solver:
     if: |
       (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'test-solve')) ||
-      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@gemini')) ||
+      (github.event_name == 'issue_comment' && (contains(github.event.comment.body, '@gemini') || contains(github.event.comment.body, '@gpt') || contains(github.event.comment.body, '@GPT') || contains(github.event.comment.body, '@GEMINI'))) ||
       (github.event_name == 'push') ||
       (github.event_name == 'pull_request')
     runs-on: ubuntu-latest
@@ -172,7 +172,7 @@ GitHub Actionsの「Enhanced Gemini Issue Solver」から：
 - **Issue作成時**: Issue本文に `@gemini` を含める
 - **コメント実行**: Issue内のコメントに `@gemini` を含める
 - **ラベル付与**: `solve` ラベルを付ける
-- **AIプロバイダー切り替え**: `@gpt` でOpenAI GPT使用
+- **AIプロバイダー切り替え**: `@gpt` または `@GPT` でOpenAI GPT使用
 
 ```
 @gemini
@@ -315,6 +315,9 @@ Repository Settings > Secrets and variables > Actions で以下を設定:
 
 @gpt
 GPT-4を使ってこの問題を解決してください。
+
+@GPT
+大文字でもGPT-4を使用できます。
 ```
 
 

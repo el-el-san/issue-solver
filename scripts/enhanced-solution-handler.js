@@ -24,6 +24,16 @@ class EnhancedSolutionHandler {
         await this.statusManager.createInitialComment(this.config.issueNumber);
       }
 
+      // Gitリポジトリの初期化確認
+      try {
+        execSync('git rev-parse --git-dir', { encoding: 'utf8' });
+      } catch (error) {
+        console.log('📁 Gitリポジトリを初期化中...');
+        execSync('git init', { encoding: 'utf8' });
+        execSync('git config user.email "action@github.com"', { encoding: 'utf8' });
+        execSync('git config user.name "GitHub Action"', { encoding: 'utf8' });
+      }
+
       // 変更の確認
       const gitStatus = execSync('git status --porcelain', { encoding: 'utf8' });
       

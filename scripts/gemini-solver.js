@@ -26,7 +26,7 @@ class GeminiIssueSolver {
     console.log(`📋 分析対象: ${issueInfo.title}`);
     console.log(`💬 コメント数: ${issueInfo.comments.length}件`);
     if (issueInfo.hasGeminiTrigger) {
-      console.log('🎯 @geminiトリガーが検出されました');
+      console.log('🎯 AIトリガーが検出されました');
     }
     
     // ファイル分析
