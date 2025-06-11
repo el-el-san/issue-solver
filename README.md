@@ -39,11 +39,13 @@ jobs:
       (github.event_name == 'issues' && (
         contains(github.event.issue.labels.*.name, 'solve') ||
         contains(github.event.issue.body, '@gemini') ||
-        contains(github.event.issue.body, '@gpt')
+        contains(github.event.issue.body, '@gpt') ||
+        contains(github.event.issue.body, '@gpt-o3')
       )) ||
       (github.event_name == 'issue_comment' && (
         contains(github.event.comment.body, '@gemini') ||
-        contains(github.event.comment.body, '@gpt')
+        contains(github.event.comment.body, '@gpt') ||
+        contains(github.event.comment.body, '@gpt-o3')
       ))
     runs-on: ubuntu-latest
     
@@ -91,13 +93,19 @@ jobs:
       (github.event_name == 'issues' && (
         contains(github.event.issue.labels.*.name, 'test-solve') ||
         contains(github.event.issue.body, '@gemini') ||
+        contains(github.event.issue.body, '@gemini-pro') ||
+        contains(github.event.issue.body, '@gemini-flash') ||
         contains(github.event.issue.body, '@gpt') ||
+        contains(github.event.issue.body, '@gpt-o3') ||
         contains(github.event.issue.body, '@GPT') ||
         contains(github.event.issue.body, '@GEMINI')
       )) ||
       (github.event_name == 'issue_comment' && (
         contains(github.event.comment.body, '@gemini') ||
+        contains(github.event.comment.body, '@gemini-pro') ||
+        contains(github.event.comment.body, '@gemini-flash') ||
         contains(github.event.comment.body, '@gpt') ||
+        contains(github.event.comment.body, '@gpt-o3') ||
         contains(github.event.comment.body, '@GPT') ||
         contains(github.event.comment.body, '@GEMINI')
       ))
@@ -231,6 +239,17 @@ GitHub Actionsの「Enhanced Gemini Issue Solver」から：
 @gemini
 
 ハローワールドを .tsファイルで実装してください
+```
+
+#### Geminiモデル切り替え例
+```
+@gemini-flash
+高速でシンプルなコードを生成してください
+```
+
+```
+@gemini-pro
+高精度な解析が必要な複雑な問題を解決してください
 ```
 
 ### 🔧 OpenAI GPT Issue Solver - `@gpt`

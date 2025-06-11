@@ -9,8 +9,18 @@ on:
 jobs:
   solve-issue:
     runs-on: ubuntu-latest
-    # Issueまたはコメントに@geminiが含まれている場合のみ実行
-    if: contains(github.event.issue.body, '@gemini') || contains(github.event.comment.body, '@gemini')
+    # Issueまたはコメントに@gemini/@gptが含まれている場合のみ実行
+    if: |
+      contains(github.event.issue.body, '@gemini') ||
+      contains(github.event.issue.body, '@gemini-pro') ||
+      contains(github.event.issue.body, '@gemini-flash') ||
+      contains(github.event.issue.body, '@gpt') ||
+      contains(github.event.issue.body, '@gpt-o3') ||
+      contains(github.event.comment.body, '@gemini') ||
+      contains(github.event.comment.body, '@gemini-pro') ||
+      contains(github.event.comment.body, '@gemini-flash') ||
+      contains(github.event.comment.body, '@gpt') ||
+      contains(github.event.comment.body, '@gpt-o3')
     
     permissions:
       contents: write
@@ -26,6 +36,7 @@ jobs:
         with:
           issue-number: ${{ github.event.issue.number }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           safety-mode: 'normal'
           dry-run: 'false'
@@ -39,6 +50,10 @@ jobs:
           # force-implementation: 'false'
           
           # モデル切り替え例:
-          # - デフォルト: gemini-2.5-flash-preview-05-20 (高速処理)
-          # - 高精度が必要な場合: gemini-model: 'gemini-2.5-pro-preview-06-05'
-          # - コメントでの切り替え: @gemini-pro または @gemini-flash を使用
+          # Geminiモデル:
+          # - デフォルト: gemini-2.5-pro-preview-06-05 (高精度)
+          # - 高速処理: @gemini-flash または gemini-model: 'gemini-2.5-flash-preview-05-20'
+          # - 高精度: @gemini-pro または gemini-model: 'gemini-2.5-pro-preview-06-05'
+          # OpenAIモデル:
+          # - デフォルト: codex-mini-latest (コスト効率)
+          # - 高性能推論: @gpt-o3 (o3-2025-04-16)

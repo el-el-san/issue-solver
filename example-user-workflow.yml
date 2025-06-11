@@ -7,7 +7,13 @@ on:
 
 jobs:
   solve-issue:
-    if: contains(github.event.issue.labels.*.name, 'solve')
+    if: |
+      contains(github.event.issue.labels.*.name, 'solve') ||
+      contains(github.event.issue.body, '@gemini') ||
+      contains(github.event.issue.body, '@gemini-pro') ||
+      contains(github.event.issue.body, '@gemini-flash') ||
+      contains(github.event.issue.body, '@gpt') ||
+      contains(github.event.issue.body, '@gpt-o3')
     runs-on: ubuntu-latest
     
     steps:
@@ -16,6 +22,7 @@ jobs:
         with:
           issue-number: ${{ github.event.issue.number }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           safety-mode: 'normal'
           dry-run: 'false'
