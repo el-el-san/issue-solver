@@ -52,7 +52,7 @@ class GeminiIssueSolver {
     const combinedErrorInfo = [
       ...extractedErrorInfo.errors,
       ...extractedErrorInfo.stackTraces,
-      ...issueInfo.errorInfo
+      ...(issueInfo.errorInfo || [])
     ];
     
     this.issueAnalysis = {
@@ -71,14 +71,14 @@ class GeminiIssueSolver {
       latestRequest: issueInfo.latestRequest,
       analysisContext: issueInfo.analysisContext,
       technicalContext: issueInfo.technicalContext,
-      comments: issueInfo.comments,
-      commentsCount: issueInfo.comments.length
+      comments: issueInfo.comments || [],
+      commentsCount: (issueInfo.comments || []).length
     };
     
     console.log('✅ 分析フェーズ完了');
     console.log('発見された関連ファイル:', relevantFiles.length);
     console.log('検出されたエラーパターン:', this.issueAnalysis.errorInfo.length);
-    console.log('技術スタック:', issueInfo.technicalContext.technologies.join(', ') || 'Auto-detect');
+    console.log('技術スタック:', (issueInfo.technicalContext?.technologies || []).join(', ') || 'Auto-detect');
     console.log('📄 Issue本文:', this.issueAnalysis.originalBody?.substring(0, 100) + '...');
     console.log('📋 完全なコンテンツ:', this.issueAnalysis.body?.substring(0, 200) + '...');
     
