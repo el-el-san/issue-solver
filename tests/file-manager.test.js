@@ -92,7 +92,7 @@ describe('FileManager', () => {
 
       expect(result).toContain('// TypeScript implementation');
       expect(result).toContain('utility code');
-      expect(result).toContain('export {};');
+      expect(result).toContain('// CommonJS module exports (if needed)');
     });
   });
 

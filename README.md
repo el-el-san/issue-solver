@@ -75,7 +75,11 @@ on:
 
 jobs:
   test-issue-solver:
-    if: contains(github.event.issue.labels.*.name, 'test-solve') || github.event_name != 'issues' || contains(github.event.comment.body, '@gemini')
+    if: |
+      (github.event_name == 'issues' && contains(github.event.issue.labels.*.name, 'test-solve')) ||
+      (github.event_name == 'issue_comment' && contains(github.event.comment.body, '@gemini')) ||
+      (github.event_name == 'push') ||
+      (github.event_name == 'pull_request')
     runs-on: ubuntu-latest
     
     permissions:
@@ -88,7 +92,7 @@ jobs:
       - name: Test Issue Solver with Latest Version
         uses: el-el-san/issue-solver@main  # 最新開発版
         with:
-          issue-number: ${{ github.event.issue.number || '1' }}
+          issue-number: ${{ github.event.issue.number || github.event.issue.number || '1' }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           safety-mode: 'normal'
