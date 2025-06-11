@@ -60799,7 +60799,22 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
                     path: { type: "string" },
                     action: { type: "string", enum: ["create", "modify", "delete"] },
                     changes: { type: "string" },
-                    content: { type: "string" }
+                    content: {
+                      oneOf: [
+                        { type: "string" },
+                        {
+                          type: "object",
+                          additionalProperties: false,
+                          properties: {
+                            type: { type: "string", enum: ["append", "prepend", "replace"] },
+                            content: { type: "string" },
+                            from: { type: "string" },
+                            to: { type: "string" }
+                          },
+                          required: ["type"]
+                        }
+                      ]
+                    }
                   },
                   required: ["path", "action", "changes", "content"]
                 }
