@@ -317,7 +317,7 @@ jobs:
       - name: Solve Issue with Gemini
         uses: el-el-san/issue-solver@v1.0.8
         with:
-          issue-number: ${{ github.event.issue.number }}
+          issue-number: ${{ github.event.issue.number || github.event.comment.issue.number }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           safety-mode: 'normal'
