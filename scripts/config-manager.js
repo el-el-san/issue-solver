@@ -314,14 +314,13 @@ class ConfigManager {
     console.log(`GEMINI_API_KEY存在: ${this.geminiApiKey ? 'はい' : 'いいえ'}`);
     console.log(`OPENAI_API_KEY存在: ${this.openaiApiKey ? 'はい' : 'いいえ'}`);
     
+    // セキュリティ上の理由により、APIキーの詳細な情報は表示しない
     if (this.geminiApiKey) {
-      console.log(`GEMINI_API_KEY長さ: ${this.geminiApiKey.length}文字`);
-      console.log(`GEMINI_API_KEYプレフィックス: ${this.geminiApiKey.substring(0, 10)}...`);
+      console.log(`GEMINI_API_KEY設定状況: 正常に設定済み`);
     }
     
     if (this.openaiApiKey) {
-      console.log(`OPENAI_API_KEY長さ: ${this.openaiApiKey.length}文字`);
-      console.log(`OPENAI_API_KEYプレフィックス: ${this.openaiApiKey.substring(0, 10)}...`);
+      console.log(`OPENAI_API_KEY設定状況: 正常に設定済み`);
     }
 
     console.log('\n🔍 === トリガー検出情報 ===');
@@ -350,6 +349,17 @@ class ConfigManager {
     console.log(`GITHUB_TOKEN存在: ${process.env.GITHUB_TOKEN ? 'はい' : 'いいえ'}`);
     console.log(`ISSUE_NUMBER: ${this.issueNumber}`);
     console.log(`実行モード: ${this.executionMode}`);
+    
+    // セキュアな環境変数デバッグ（APIキーの詳細は表示しない）
+    console.log('\n🔧 === 環境変数デバッグ ===');
+    console.log(`OPENAI_API_KEY環境変数: ${process.env.OPENAI_API_KEY ? '設定済み' : '未設定'}`);
+    console.log(`GEMINI_API_KEY環境変数: ${process.env.GEMINI_API_KEY ? '設定済み' : '未設定'}`);
+    console.log(`GITHUB_REPOSITORY: ${process.env.GITHUB_REPOSITORY || '未設定'}`);
+    console.log(`GITHUB_ACTOR: ${process.env.GITHUB_ACTOR || '未設定'}`);
+    console.log(`GITHUB_EVENT_NAME: ${process.env.GITHUB_EVENT_NAME || '未設定'}`);
+    console.log(`GITHUB_REF: ${process.env.GITHUB_REF || '未設定'}`);
+    console.log('=== 環境変数デバッグ終了 ===');
+    
     console.log('=== 診断情報終了 ===\n');
   }
 
@@ -357,13 +367,21 @@ class ConfigManager {
    * OpenAI API キーエラーの詳細情報を出力
    */
   throwDetailedOpenAIError() {
+    const repository = process.env.GITHUB_REPOSITORY || 'unknown';
+    const actor = process.env.GITHUB_ACTOR || 'unknown';
+    
     const errorMessage = [
       '\n❌ === OpenAI API KEY エラー詳細 ===',
       '',
       '🎯 問題: @gpt トリガーが検出されましたが、OPENAI_API_KEY が設定されていません',
       '',
+      '🔧 考えられる原因:',
+      '1. Secretsが設定されていない',
+      '2. フォークしたリポジトリでSecretsにアクセスできない',
+      '3. ワークフローファイルでSecretsが正しく参照されていない',
+      '',
       '📋 解決方法:',
-      '1. GitHub リポジトリの Settings → Secrets and variables → Actions に移動',
+      `1. リポジトリ "${repository}" の Settings → Secrets and variables → Actions に移動`,
       '2. "New repository secret" をクリック',
       '3. Name: OPENAI_API_KEY',
       '4. Secret: OpenAI APIキーを貼り付け',
@@ -371,10 +389,19 @@ class ConfigManager {
       '🔗 OpenAI APIキー取得方法:',
       '   https://platform.openai.com/api-keys',
       '',
+      '⚙️ フォークリポジトリの場合:',
+      '   元のリポジトリではなく、フォーク先のリポジトリにSecretsを設定する必要があります',
+      '',
+      '🛠️ ワークフローファイル確認事項:',
+      '   ワークフローで以下のように設定されているか確認:',
+      '   openai-api-key: ${{ secrets.OPENAI_API_KEY }}',
+      '',
       '⚙️ または、Geminiを使用したい場合:',
       '   Issue本文を "@gemini" に変更してください',
       '',
-      `🔍 現在のトリガー検出状況:`,
+      `🔍 現在の実行環境:`,
+      `   リポジトリ: ${repository}`,
+      `   実行者: ${actor}`,
       `   Issue本文: "${this.issueBody}"`,
       `   コメント: "${this.commentBody || 'なし'}"`,
       '',
