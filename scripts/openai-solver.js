@@ -372,9 +372,9 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
           // /responsesエンドポイント用にリクエスト形式を変換
           const responsesConfig = {
             model: requestConfig.model,
-            input: requestConfig.messages.map(msg => msg.content).join('\n'),
-            temperature: requestConfig.temperature,
-            max_tokens: requestConfig.max_tokens
+            input: requestConfig.messages.map(msg => msg.content).join('\n')
+            // max_tokensパラメータは/responsesエンドポイントでサポートされていない
+            // temperatureも一旦除外してテスト
           };
           const result = await this.client.responses.create(responsesConfig);
           
