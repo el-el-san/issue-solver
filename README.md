@@ -58,7 +58,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Solve Issue with AI
-        uses: el-el-san/issue-solver@v1.0.8  # 安定版
+        uses: el-el-san/issue-solver@v1.0.9  # 安定版
         with:
           issue-number: ${{ github.event.issue.number || github.event.comment.issue.number }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
