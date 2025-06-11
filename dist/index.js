@@ -60764,12 +60764,69 @@ EXAMPLE FILES: ${analysisResult.suggestedFiles.join(', ')}
       try {
         // codex-mini-latestモデルは/responsesエンドポイントを使用
         if (requestConfig.model === 'codex-mini-latest') {
-          // /responsesエンドポイント用にリクエスト形式を変換
+          // Structured Outputsのスキーマを定義
+          const jsonSchema = {
+            type: "object",
+            properties: {
+              type: {
+                type: "string",
+                enum: ["feature", "bug", "test", "documentation", "enhancement"]
+              },
+              confidence: {
+                type: "string",
+                enum: ["high", "medium", "low"]
+              },
+              analysis: {
+                type: "string",
+                description: "Detailed problem analysis in Japanese"
+              },
+              planning: {
+                type: "array",
+                items: { type: "string" },
+                description: "Step-by-step plan"
+              },
+              description: {
+                type: "string",
+                description: "Clear solution description in Japanese"
+              },
+              files: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    path: { type: "string" },
+                    action: { type: "string", enum: ["create", "modify", "delete"] },
+                    changes: { type: "string" },
+                    content: { type: "string" }
+                  },
+                  required: ["path", "action", "changes", "content"]
+                }
+              },
+              implementation: {
+                type: "string",
+                description: "Complete implementation details or code"
+              },
+              tests: {
+                type: "string",
+                description: "Testing recommendations in Japanese"
+              },
+              report: {
+                type: "string",
+                description: "Implementation report in Japanese"
+              }
+            },
+            required: ["type", "confidence", "analysis", "description", "files"]
+          };
+
+          // /responsesエンドポイント用にリクエスト形式を変換（Structured Outputs対応）
           const responsesConfig = {
             model: requestConfig.model,
-            input: requestConfig.messages.map(msg => msg.content).join('\n')
-            // max_tokensパラメータは/responsesエンドポイントでサポートされていない
-            // temperatureも一旦除外してテスト
+            input: requestConfig.messages.map(msg => msg.content).join('\n'),
+            text_format: {
+              type: "json_schema",
+              strict: true,
+              schema: jsonSchema
+            }
           };
           const result = await this.client.responses.create(responsesConfig);
           
