@@ -1,6 +1,6 @@
 {
   "name": "gemini-issue-solver",
-  "version": "1.0.0",
+  "version": "1.0.8",
   "description": "Refactored Gemini Issue Solver with improved maintainability",
   "main": "scripts/main.js",
   "scripts": {

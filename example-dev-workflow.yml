@@ -1,0 +1,30 @@
+# Example workflow for developers (latest version)
+name: Issue Solver - Development
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  test-issue-solver:
+    if: contains(github.event.issue.labels.*.name, 'test-solve') || github.event_name != 'issues'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Test Issue Solver with Latest Version
+        uses: el-el-san/issue-solver@main  # Latest development version
+        with:
+          issue-number: ${{ github.event.issue.number || '1' }}
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          safety-mode: 'normal'
+          dry-run: 'false'  # Enable actual file generation for testing
+          enable-review: 'false'
+          run-tests: 'true'
+          run-linter: 'true'
+          strict-mode: 'false'
+          force-implementation: 'true'

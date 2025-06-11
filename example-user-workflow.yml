@@ -1,0 +1,24 @@
+# Example workflow for end users (stable version)
+name: Issue Solver - Production
+
+on:
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  solve-issue:
+    if: contains(github.event.issue.labels.*.name, 'solve')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Solve Issue with Gemini
+        uses: el-el-san/issue-solver@v1.0.8  # Stable version
+        with:
+          issue-number: ${{ github.event.issue.number }}
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          safety-mode: 'normal'
+          dry-run: 'false'
+          enable-review: 'true'
+          run-tests: 'true'
+          strict-mode: 'true'

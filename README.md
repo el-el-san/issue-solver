@@ -12,48 +12,82 @@ Claude Code Actions ライクな動作を目指しています
 
 ## ⚡ クイックスタート
 
-### GitHub Action として使用 (以下ファイル作成）
+### バージョン管理について
+
+このプロジェクトでは異なる用途に応じてバージョンを使い分けできます：
+
+- **安定版（推奨）**: `v1.0.8` - 本番環境やエンドユーザー向け
+- **開発版**: `@main` - 最新機能のテスト・開発用
+
+### エンドユーザー向け設定（安定版）
 
 ```yaml
 # .github/workflows/gemini-solver.yml
-name: Gemini Issue Solver
+name: Issue Solver - Production
+
 on:
   issues:
-    types: [opened, edited]
-  issue_comment:
-    types: [created]
+    types: [opened, labeled]
 
 jobs:
   solve-issue:
+    if: contains(github.event.issue.labels.*.name, 'solve')
     runs-on: ubuntu-latest
-    # Issueまたはコメントに@geminiが含まれている場合のみ実行
-    if: contains(github.event.issue.body, '@gemini') || contains(github.event.comment.body, '@gemini')
     
     permissions:
       contents: write
       issues: write
       pull-requests: write
-      actions: write
     
     steps:
       - uses: actions/checkout@v4
       
       - name: Solve Issue with Gemini
-        uses: el-el-san/issue-solver@v1
+        uses: el-el-san/issue-solver@v1.0.8.0.8  # 安定版
         with:
           issue-number: ${{ github.event.issue.number }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
           safety-mode: 'normal'
           dry-run: 'false'
+          enable-review: 'true'
           run-tests: 'true'
-          # 必要に応じて以下のオプションも設定可能:
-          # gemini-model: 'gemini-2.5-pro-preview-06-05'  # 高精度モデルを使用
-          # enable-review: 'false'
-          # run-linter: 'false'
-          # strict-mode: 'false'
-          # target-files: 'src/**/*.{js,ts,py}'
-          # force-implementation: 'false'
+          strict-mode: 'true'
+```
+
+### 開発者向け設定（最新版）
+
+```yaml
+# .github/workflows/gemini-solver-dev.yml
+name: Issue Solver - Development
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  issues:
+    types: [opened, labeled]
+
+jobs:
+  test-issue-solver:
+    if: contains(github.event.issue.labels.*.name, 'test-solve') || github.event_name != 'issues'
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Test Issue Solver with Latest Version
+        uses: el-el-san/issue-solver@main  # 最新開発版
+        with:
+          issue-number: ${{ github.event.issue.number || '1' }}
+          gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          safety-mode: 'normal'
+          dry-run: 'false'  # 開発時もファイル生成を確認
+          enable-review: 'false'
+          run-tests: 'true'
+          run-linter: 'true'
+          strict-mode: 'false'
+          force-implementation: 'true'
 ```
 
 ### 必要なシークレット設定
@@ -223,7 +257,7 @@ jobs:
       - uses: actions/checkout@v4
       
       - name: Solve Issue with Gemini
-        uses: el-el-san/issue-solver@v1
+        uses: el-el-san/issue-solver@v1.0.8
         with:
           issue-number: ${{ github.event.issue.number }}
           gemini-api-key: ${{ secrets.GEMINI_API_KEY }}
@@ -332,6 +366,26 @@ env:
 - **同時実行**: 最大3つのファイル操作
 - **テスト実行**: 各フェーズ最大5分タイムアウト
 - **ファイル処理**: 100ファイル未満で最適化
+
+## 🔄 バージョン管理とリリース
+
+### リリースプロセス
+
+1. **安定版リリース**: Gitタグ（`v1.0.8`）を作成すると自動リリース
+2. **自動ビルド**: GitHub Actionsで自動テスト・ビルド実行
+3. **配布**: GitHub MarketplaceとReleasesで公開
+
+### 使用例ファイル
+
+- [`example-user-workflow.yml`](./example-user-workflow.yml) - エンドユーザー向け設定例
+- [`example-dev-workflow.yml`](./example-dev-workflow.yml) - 開発者向け設定例
+- [`.github/workflows/release.yml`](./.github/workflows/release.yml) - 自動リリース設定
+
+### バージョン戦略
+
+- **安定版**: タグベース（`@v1.0.8`）- 本番環境推奨
+- **開発版**: ブランチベース（`@main`）- 最新機能テスト用
+- **後方互換性**: `@v1`でも最新の1.x系を取得可能
 
 ## 📚 関連ドキュメント
 
